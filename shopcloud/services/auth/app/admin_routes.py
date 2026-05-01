@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.admin_pool_settings import AdminPoolAuthSettings
