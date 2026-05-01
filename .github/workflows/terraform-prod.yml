@@ -22,6 +22,9 @@ env:
   AWS_REGION_PROD: eu-central-1
   AWS_ROLE_TO_ASSUME_PROD: arn:aws:iam::712044128773:role/shopcloud-prod-github-actions-prod
   CONFTEST_VERSION: "0.50.0"
+  TF_VAR_replica_vpc_id: ${{ vars.PROD_REPLICA_VPC_ID }}
+  TF_VAR_replica_private_data_subnet_ids: ${{ vars.PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS }}
+  TF_VAR_replica_kms_key_arn: ${{ vars.PROD_REPLICA_KMS_KEY_ARN }}
 
 permissions:
   id-token: write
