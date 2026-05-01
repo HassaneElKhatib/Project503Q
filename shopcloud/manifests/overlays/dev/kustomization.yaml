@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: app-dev
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - external-secrets.yaml
+  - ingress-public.yaml
+  - ingress-admin.yaml
+  - ./base
+
+patches:
+  - path: patch-networkpolicy-vpc.yaml
+    target:
+      group: networking.k8s.io
+      version: v1
+      kind: NetworkPolicy
+      name: allow-alb-to-services
+
+images:
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-catalog
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-catalog
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-auth
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-auth
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-cart
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-cart
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-admin
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-admin
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-checkout
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-checkout
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-api-gateway
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-api-gateway
+  - name: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-customer-web
+    newName: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-dev-customer-web
+
+commonLabels:
+  shopcloud.shop/environment: dev

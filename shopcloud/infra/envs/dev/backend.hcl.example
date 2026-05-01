@@ -1,3 +1,4 @@
+# GitHub Actions uses committed backend.tf (same values). Use backend.hcl locally only if you override.
 
 bucket         = "shopcloud-tfstate-712044128773"
 key            = "infra/envs/dev/terraform.tfstate"

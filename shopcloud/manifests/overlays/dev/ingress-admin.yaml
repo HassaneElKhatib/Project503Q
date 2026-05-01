@@ -1,0 +1,32 @@
+# Internal ALB (VPN-only path per architecture). Set inbound-cidrs to VPN/client subnets when known.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: admin-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health/live
+    alb.ingress.kubernetes.io/group.name: shopcloud-admin-dev
+    alb.ingress.kubernetes.io/inbound-cidrs: 10.20.0.0/16
+spec:
+  rules:
+    - host: admin.dev.internal.shopcloud.example.com
+      http:
+        paths:
+          - path: /api/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 80
+          - path: /api/me
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 80

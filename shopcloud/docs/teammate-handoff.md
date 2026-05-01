@@ -76,6 +76,54 @@ Two user pools: customer and admin.
 5. On merge: `terraform apply -auto-approve`
 6. **No prod credentials in this workflow.** This is dev-only.
 
+### GitHub → AWS OIDC for Terraform Dev (fix `AssumeRoleWithWebIdentity`)
+
+CI assumes IAM role `shopcloud-dev-github-actions-dev` (see `.github/workflows/terraform-dev.yml`).
+If the job fails with **`Not authorized to perform sts:AssumeRoleWithWebIdentity`**, the role **trust policy**
+does not match GitHub’s OIDC **`sub`** claim.
+
+**Important:** `pull_request` events use a subject like `repo:<owner>/<repo>:pull_request`.
+Push events use `repo:<owner>/<repo>:ref:refs/heads/<branch>`.
+If the trust policy only lists `ref:refs/heads/...`, **PR plans fail** while pushes might still work.
+
+1. IAM → **Identity providers** — ensure `token.actions.githubusercontent.com` exists (create via AWS docs if missing).
+2. IAM → role **`shopcloud-dev-github-actions-dev`** → **Trust relationships** — include PR + branches your workflows use.
+
+Example trust policy (replace `<ACCOUNT_ID>`; adjust `repo:` if the GitHub repo name differs):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:HassaneElKhatib/Project503Q:pull_request",
+            "repo:HassaneElKhatib/Project503Q:ref:refs/heads/dev",
+            "repo:HassaneElKhatib/Project503Q:ref:refs/heads/main"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+Compare with the working **`shopcloud-prod-github-actions-prod`** trust policy and align dev’s **`sub`** patterns.
+
+**Fork PRs:** GitHub does not grant OIDC tokens to workflows triggered from forks unless you opt into insecure patterns — prefer PR branches on the same repo for Terraform plans.
+
+Dev Terraform state backend for CI is defined in `infra/envs/dev/backend.tf` (same idea as prod’s `backend.tf`). Local `-backend-config=backend.hcl` overrides are optional if your buckets differ.
+
 ### Critical detail you'll trip on
 
 The AWS Load Balancer Controller helm chart needs annotations on its

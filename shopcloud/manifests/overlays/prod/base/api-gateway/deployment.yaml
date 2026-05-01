@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: app
+  labels:
+    app: api-gateway
+    tier: backend
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        tier: backend
+    spec:
+      serviceAccountName: api-gateway
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: api-gateway
+      containers:
+        - name: api-gateway
+          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: api-gateway
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopcloud-env
+                  key: environment
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: shopcloud-env
+                  key: aws_region
+            - name: ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: shopcloud-env
+                  key: public_origin
+            - name: CATALOG_BASE_URL
+              value: http://catalog
+            - name: CART_BASE_URL
+              value: http://cart
+            - name: CHECKOUT_BASE_URL
+              value: http://checkout
+            - name: ADMIN_BASE_URL
+              value: http://admin
+            - name: AUTH_BASE_URL
+              value: http://auth
+            - name: GATEWAY_DB_URL
+              value: "sqlite+aiosqlite:////data/gateway.db"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: api-gateway-jwt
+                  key: secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: gateway-data
+              mountPath: /data
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: gateway-data
+          emptyDir:
+            sizeLimit: 256Mi
+      terminationGracePeriodSeconds: 30

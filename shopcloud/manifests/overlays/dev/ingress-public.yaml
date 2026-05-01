@@ -1,0 +1,41 @@
+# Dev customer-facing ingress: HTTP-only default so you can apply before ACM exists.
+# For HTTPS + WAF/CloudFront parity with prod, add ACM ARN + HTTPS listener (copy prod annotations).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: public-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/group.name: shopcloud-public-dev
+spec:
+  ingressClassName: alb
+  rules:
+    - host: dev.shopcloud.example.com
+      http:
+        paths:
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-web
+                port:
+                  number: 80
