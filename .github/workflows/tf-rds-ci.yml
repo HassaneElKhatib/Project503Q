@@ -1,0 +1,37 @@
+name: Terraform RDS Module CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "shopcloud/infra/envs/dev/modules/rds/**"
+      - "shopcloud/infra/envs/prod/modules/rds/**"
+      - ".github/workflows/tf-rds-ci.yml"
+      - ".github/workflows/_reusable-tf-module-ci.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "shopcloud/infra/envs/dev/modules/rds/**"
+      - "shopcloud/infra/envs/prod/modules/rds/**"
+      - ".github/workflows/tf-rds-ci.yml"
+      - ".github/workflows/_reusable-tf-module-ci.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: tf-rds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate_dev:
+    uses: ./.github/workflows/_reusable-tf-module-ci.yml
+    with:
+      module_path: shopcloud/infra/envs/dev/modules/rds
+      module_name: rds (dev)
+  validate_prod:
+    uses: ./.github/workflows/_reusable-tf-module-ci.yml
+    with:
+      module_path: shopcloud/infra/envs/prod/modules/rds
+      module_name: rds (prod)

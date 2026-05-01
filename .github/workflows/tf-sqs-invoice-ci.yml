@@ -1,0 +1,39 @@
+name: Terraform SQS Invoice Module CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "shopcloud/infra/envs/dev/modules/sqs-invoice/**"
+      - "shopcloud/infra/envs/prod/modules/sqs-invoice/**"
+      - ".github/workflows/tf-sqs-invoice-ci.yml"
+      - ".github/workflows/_reusable-tf-module-ci.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "shopcloud/infra/envs/dev/modules/sqs-invoice/**"
+      - "shopcloud/infra/envs/prod/modules/sqs-invoice/**"
+      - ".github/workflows/tf-sqs-invoice-ci.yml"
+      - ".github/workflows/_reusable-tf-module-ci.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: tf-sqs-invoice-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate_dev:
+    uses: ./.github/workflows/_reusable-tf-module-ci.yml
+    with:
+      module_path: shopcloud/infra/envs/dev/modules/sqs-invoice
+      module_name: sqs-invoice (dev)
+  validate_prod:
+    uses: ./.github/workflows/_reusable-tf-module-ci.yml
+    with:
+      module_path: shopcloud/infra/envs/prod/modules/sqs-invoice
+      module_name: sqs-invoice (prod)
+
+

@@ -1,0 +1,233 @@
+name: Terraform Prod
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "shopcloud/infra/envs/prod/**"
+      - "policy/terraform/**"
+      - ".github/workflows/terraform-prod.yml"
+  push:
+    branches: [main]
+    paths:
+      - "shopcloud/infra/envs/prod/**"
+      - "policy/terraform/**"
+      - ".github/workflows/terraform-prod.yml"
+  workflow_dispatch: {}
+
+env:
+  TF_WORKING_DIR: ./shopcloud/infra/envs/prod
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AWS_REGION_PROD: eu-central-1
+  AWS_ROLE_TO_ASSUME_PROD: arn:aws:iam::712044128773:role/shopcloud-prod-github-actions-prod
+  CONFTEST_VERSION: "0.50.0"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-prod-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Terraform Plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    env:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME_PROD }}
+          aws-region: ${{ env.AWS_REGION_PROD }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate -no-color
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: tflint --init && tflint -f compact
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ env.TF_WORKING_DIR }}
+          soft_fail: false
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -no-color -out=tfplan -input=false
+
+      - name: Generate plan JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan > tfplan.json
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-prod-${{ github.run_id }}
+          path: |
+            ${{ env.TF_WORKING_DIR }}/tfplan
+            ${{ env.TF_WORKING_DIR }}/tfplan.json
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Setup Conftest
+        run: |
+          curl -sSL "https://github.com/open-policy-agent/conftest/releases/download/v${{ env.CONFTEST_VERSION }}/conftest_${{ env.CONFTEST_VERSION }}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo mv /tmp/conftest /usr/local/bin/conftest
+          conftest --version
+
+      - name: Run Conftest policies
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          conftest test tfplan.json \
+            --policy ${{ github.workspace }}/policy/terraform \
+            --all-namespaces
+
+      - name: Setup Infracost
+        if: env.INFRACOST_API_KEY != ''
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Infracost cost estimate
+        if: env.INFRACOST_API_KEY != ''
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          infracost breakdown \
+            --path tfplan.json \
+            --format json \
+            --out-file infracost.json
+          infracost output \
+            --path infracost.json \
+            --format github-comment \
+            --out-file /tmp/infracost-comment.md
+
+      - name: Post Infracost comment
+        if: env.INFRACOST_API_KEY != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/infracost-comment.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+      - name: Post plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const plan = `${{ steps.plan.outputs.stdout }}`;
+            const trimmed = plan.length > 60000
+              ? plan.substring(0, 60000) + "\n...truncated..."
+              : plan;
+            const body = [
+              "#### Terraform Plan (prod)",
+              "",
+              "```",
+              trimmed,
+              "```",
+              "",
+              `Triggered by @${{ github.actor }} on commit \`${{ github.sha }}\``
+            ].join("\n");
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+  apply:
+    name: Terraform Apply
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME_PROD }}
+          aws-region: ${{ env.AWS_REGION_PROD }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -no-color -out=tfplan -input=false
+
+      - name: Generate plan JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan > tfplan.json
+
+      - name: Setup Conftest
+        run: |
+          curl -sSL "https://github.com/open-policy-agent/conftest/releases/download/v${{ env.CONFTEST_VERSION }}/conftest_${{ env.CONFTEST_VERSION }}_Linux_x86_64.tar.gz" \
+            | tar -xz -C /tmp
+          sudo mv /tmp/conftest /usr/local/bin/conftest
+
+      - name: Run Conftest policies
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          conftest test tfplan.json \
+            --policy ${{ github.workspace }}/policy/terraform \
+            --all-namespaces
+
+      - name: Terraform apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve -input=false tfplan
+
+

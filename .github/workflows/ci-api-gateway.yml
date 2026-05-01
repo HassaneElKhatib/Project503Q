@@ -1,0 +1,28 @@
+name: CI API Gateway
+
+on:
+  push:
+    paths:
+      - "shopcloud/services/api-gateway/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-api-gateway.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+  pull_request:
+    paths:
+      - "shopcloud/services/api-gateway/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-api-gateway.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  api_gateway:
+    uses: ./.github/workflows/reusable-build-deploy.yml
+    with:
+      service: api-gateway
+      service_path: shopcloud/services/api-gateway
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_OIDC_ROLE_ARN_DEV }}

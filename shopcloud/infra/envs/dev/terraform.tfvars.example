@@ -1,0 +1,25 @@
+
+environment = "dev"
+aws_region  = "eu-central-1"
+
+enable_edge        = false
+domain_name        = "dev.shopcloud.example.com"
+origin_domain_name = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
+
+enable_eks         = true
+enable_helm_addons = true
+
+enable_cognito         = true
+cookie_domain          = ".dev.shopcloud.example.com"
+customer_domain_prefix = "shopcloud-dev-customer"
+admin_domain_prefix    = "shopcloud-dev-admin"
+
+enable_data               = false
+kms_key_arn               = ""
+rds_backup_retention_days = 1
+ses_from_address          = "noreply@dev.shopcloud.example.com"
+
+replica_aws_region              = "eu-west-1"
+replica_vpc_id                  = ""
+replica_private_data_subnet_ids = []
+replica_kms_key_arn             = "arn:aws:kms:eu-west-1:712044128773:key/9a339eb9-4698-4ea2-a381-c1b4a9f4243e"

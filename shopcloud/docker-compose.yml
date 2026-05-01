@@ -1,0 +1,200 @@
+############################################
+# Local end-to-end stack for ShopCloud.
+#
+# Brings up Postgres + Redis + every Python service + the api-gateway.
+# The customer-web SPA is run separately with `npm run dev` (it likes
+# the Vite dev server). docker-compose --profile web also includes a
+# production-ish nginx build of the SPA.
+#
+# Quick start:
+#   cd shopcloud
+#   docker compose up --build
+#
+# Then in another terminal:
+#   cd services/customer-web
+#   npm install && npm run dev
+#
+# UI: http://localhost:5173 (Vite dev) -> talks to gateway @ :8080
+############################################
+
+x-python-service: &python-service
+  restart: unless-stopped
+  build:
+    context: .
+  environment:
+    PYTHONUNBUFFERED: "1"
+    LOG_LEVEL: info
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shopcloud
+      POSTGRES_PASSWORD: shopcloud
+      POSTGRES_DB: shopcloud
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "shopcloud"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api-gateway:
+    <<: *python-service
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    environment:
+      LOG_LEVEL: info
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:4173,http://localhost:8080
+      GATEWAY_DB_URL: sqlite+aiosqlite:////data/gateway.db
+      JWT_SECRET: local-dev-jwt-secret-change-me
+      CATALOG_BASE_URL: http://catalog:8000
+      CART_BASE_URL: http://cart:8000
+      CHECKOUT_BASE_URL: http://checkout:8000
+      ADMIN_BASE_URL: http://admin:8000
+      AUTH_BASE_URL: http://auth:8001
+      SMTP_ENABLED: "${SMTP_ENABLED:-true}"
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: "587"
+      SMTP_USER: "${SMTP_USER:-tayma.merhebi@gmail.com}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      SMTP_FROM_EMAIL: "${SMTP_FROM_EMAIL:-tayma.merhebi@gmail.com}"
+      SMTP_FROM_NAME: The Glow Lab Billing
+      SMTP_USE_TLS: "true"
+      SMTP_USE_SSL: "false"
+    ports:
+      - "8080:8080"
+    volumes:
+      - gateway_data:/data
+
+  catalog:
+    <<: *python-service
+    build:
+      context: .
+      dockerfile: services/catalog/Dockerfile
+    environment:
+      SERVICE_NAME: catalog
+      ENVIRONMENT: local
+      PRODUCTS_JSON_PATH: /app/data/products.json
+      REDIS_URL: redis://redis:6379/0
+      CACHE_TTL_SECONDS: "60"
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+
+  auth:
+    <<: *python-service
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    environment:
+      SERVICE_NAME: auth
+      ENVIRONMENT: local
+      COGNITO_USER_POOL_ID: us-east-1_LOCALDEV
+      COGNITO_APP_CLIENT_ID: localdev
+      COGNITO_REGION: us-east-1
+      COGNITO_DOMAIN: shopcloud-localdev.auth.us-east-1.amazoncognito.com
+      CALLBACK_URL: http://localhost:5173/auth/callback
+      LOGOUT_REDIRECT_URL: http://localhost:5173/
+      COOKIE_DOMAIN: localhost
+      COOKIE_SECURE: "false"
+      STATE_SIGNING_KEY: local-state-key-change-me-please-make-it-long
+      STATE_TTL_SECONDS: "300"
+    ports:
+      - "8002:8001"
+
+  cart:
+    <<: *python-service
+    build:
+      context: .
+      dockerfile: services/cart/Dockerfile
+    environment:
+      SERVICE_NAME: cart
+      ENVIRONMENT: local
+      REDIS_URL: redis://redis:6379/1
+      CART_TTL_SECONDS: "604800"
+      COGNITO_USER_POOL_ID: us-east-1_LOCALDEV
+      COGNITO_APP_CLIENT_ID: localdev
+      COGNITO_REGION: us-east-1
+      CATALOG_BASE_URL: http://catalog:8000
+      CATALOG_TIMEOUT_SECONDS: "2.0"
+    depends_on:
+      redis:
+        condition: service_healthy
+      catalog:
+        condition: service_started
+    ports:
+      - "8003:8000"
+
+  checkout:
+    <<: *python-service
+    build:
+      context: .
+      dockerfile: services/checkout/Dockerfile
+    environment:
+      SERVICE_NAME: checkout
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://shopcloud:shopcloud@postgres:5432/shopcloud
+      REDIS_URL: redis://redis:6379/1
+      INVOICE_QUEUE_URL: http://localhost:9999/local-only
+      AWS_REGION: us-east-1
+      COGNITO_USER_POOL_ID: us-east-1_LOCALDEV
+      COGNITO_APP_CLIENT_ID: localdev
+      COGNITO_REGION: us-east-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8004:8000"
+
+  admin:
+    <<: *python-service
+    build:
+      context: .
+      dockerfile: services/admin/Dockerfile
+    environment:
+      SERVICE_NAME: admin
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://shopcloud:shopcloud@postgres:5432/shopcloud
+      COGNITO_USER_POOL_ID: us-east-1_LOCALDEV
+      COGNITO_APP_CLIENT_ID: localdev
+      COGNITO_REGION: us-east-1
+      REQUIRED_ADMIN_GROUP: admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8005:8000"
+
+  customer-web:
+    profiles: ["web"]
+    build:
+      context: services/customer-web
+      args:
+        VITE_BACKEND_URL: http://localhost:8080
+    ports:
+      - "8090:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:
+  gateway_data:

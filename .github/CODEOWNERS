@@ -1,0 +1,58 @@
+
+*                                                  @persona @personb @personc
+
+/services/catalog/                                 @persona
+/services/auth/                                    @persona
+/libs/                                             @persona
+/infra/envs/dev/modules/network/                   @persona
+/infra/envs/prod/modules/network/                  @persona
+/infra/envs/dev/modules/edge/                      @persona
+/infra/envs/prod/modules/edge/                     @persona
+/infra/envs/dev/modules/ecr/                       @persona
+/infra/envs/prod/modules/ecr/                      @persona
+/.github/workflows/reusable-build-deploy.yml       @persona
+/.github/workflows/ci-catalog.yml                  @persona
+/.github/workflows/ci-auth.yml                     @persona
+
+/services/cart/                                    @personb
+/services/admin/                                   @personb
+/manifests/                                        @personb
+/infra/envs/dev/modules/eks/                       @personb
+/infra/envs/prod/modules/eks/                      @personb
+/infra/envs/dev/modules/eks_helm_addons/           @personb
+/infra/envs/prod/modules/eks_helm_addons/          @personb
+/infra/envs/dev/modules/cognito/                   @personb
+/infra/envs/prod/modules/cognito/                  @personb
+/.github/workflows/terraform-dev.yml               @personb
+/.github/workflows/ci-cart.yml                     @personb
+/.github/workflows/ci-admin.yml                    @personb
+
+/services/checkout/                                @personc
+/services/invoice-worker/                          @personc
+/migrations/                                       @personc
+/alembic.ini                                       @personc
+/infra/envs/dev/modules/rds/                       @personc
+/infra/envs/prod/modules/rds/                      @personc
+/infra/envs/dev/modules/redis/                     @personc
+/infra/envs/prod/modules/redis/                    @personc
+/infra/envs/dev/modules/sqs-invoice/               @personc
+/infra/envs/prod/modules/sqs-invoice/              @personc
+/infra/envs/dev/modules/secrets/                   @personc
+/infra/envs/prod/modules/secrets/                  @personc
+/infra/bootstrap/                                  @personc
+/.github/workflows/terraform-prod.yml              @personc
+/.github/workflows/ci-checkout.yml                 @personc
+/.github/workflows/ci-invoice-worker.yml           @personc
+/.github/workflows/tf-rds-ci.yml                   @personc
+/.github/workflows/tf-redis-ci.yml                 @personc
+/.github/workflows/tf-secrets-ci.yml               @personc
+/.github/workflows/tf-sqs-invoice-ci.yml           @personc
+/policy/terraform/                                 @personc
+
+/services/api-gateway/                             @persona @personb @personc
+/services/customer-web/                            @persona @personb @personc
+/.github/workflows/ci-api-gateway.yml              @persona
+/.github/workflows/ci-customer-web.yml             @persona
+/docs/                                             @persona @personb @personc
+/README.md                                         @persona @personb @personc
+/docker-compose.yml                                @persona @personb @personc

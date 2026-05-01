@@ -1,0 +1,28 @@
+name: CI Admin
+
+on:
+  push:
+    paths:
+      - "shopcloud/services/admin/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-admin.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+  pull_request:
+    paths:
+      - "shopcloud/services/admin/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-admin.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  admin:
+    uses: ./.github/workflows/reusable-build-deploy.yml
+    with:
+      service: admin
+      service_path: shopcloud/services/admin
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_OIDC_ROLE_ARN_DEV }}

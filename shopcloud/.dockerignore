@@ -1,0 +1,23 @@
+__pycache__
+*.pyc
+.venv
+venv
+.pytest_cache
+.coverage
+.git
+.gitignore
+.dockerignore
+README.md
+tests/
+*.md
+.env
+.env.*
+
+# Keep Python service builds fast when context is monorepo root.
+**/node_modules
+**/dist
+**/.next
+**/coverage
+infra/**/.terraform
+**/*.tfstate
+**/*.tfstate.*

@@ -1,0 +1,28 @@
+name: CI Cart
+
+on:
+  push:
+    paths:
+      - "shopcloud/services/cart/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-cart.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+  pull_request:
+    paths:
+      - "shopcloud/services/cart/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-cart.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cart:
+    uses: ./.github/workflows/reusable-build-deploy.yml
+    with:
+      service: cart
+      service_path: shopcloud/services/cart
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_OIDC_ROLE_ARN_DEV }}

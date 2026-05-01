@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  namespace: app
+  labels:
+    app: cart
+    tier: backend
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: cart
+  template:
+    metadata:
+      labels:
+        app: cart
+        tier: backend
+      annotations:
+        secrets.checksum/cart: placeholder
+    spec:
+      serviceAccountName: cart
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: cart
+      containers:
+        - name: cart
+          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-cart:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: cart
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopcloud-env
+                  key: environment
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: shopcloud-env
+                  key: aws_region
+            - name: LOG_LEVEL
+              value: INFO
+            - name: CATALOG_BASE_URL
+              value: http://catalog.app.svc.cluster.local
+            - name: CATALOG_TIMEOUT_SECONDS
+              value: "2.0"
+            - name: CART_TTL_SECONDS
+              value: "604800"  # 7 days
+            - name: MAX_ITEMS_PER_CART
+              value: "50"
+            - name: MAX_QUANTITY_PER_ITEM
+              value: "99"
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: shared-redis
+                  key: url
+            - name: COGNITO_USER_POOL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: user_pool_id
+            - name: COGNITO_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: app_client_id
+            - name: COGNITO_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: region
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 2
+            failureThreshold: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      terminationGracePeriodSeconds: 30

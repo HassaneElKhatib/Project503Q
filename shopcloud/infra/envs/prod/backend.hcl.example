@@ -1,0 +1,6 @@
+
+bucket         = "shopcloud-tfstate-712044128773"
+key            = "infra/envs/prod/terraform.tfstate"
+region         = "eu-central-1"
+encrypt        = true
+dynamodb_table = "shopcloud-tf-locks"

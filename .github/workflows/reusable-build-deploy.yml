@@ -1,0 +1,121 @@
+name: Reusable Build Deploy
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: "Service name (matches shopcloud/services/<service> and ECR repo suffix)."
+        required: true
+        type: string
+      service_path:
+        description: "Path to the service inside the repo. Defaults to shopcloud/services/<service>."
+        required: false
+        type: string
+        default: ""
+      python_version:
+        required: false
+        type: string
+        default: "3.11"
+      run_tests:
+        required: false
+        type: boolean
+        default: true
+      build_image:
+        required: false
+        type: boolean
+        default: true
+      aws_region:
+        required: false
+        type: string
+        default: "eu-central-1"
+    secrets:
+      aws_role_arn:
+        description: "OIDC role to assume for ECR push (set per environment)."
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    if: ${{ inputs.run_tests }}
+    name: Lint & test ${{ inputs.service }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install service + dev deps
+        run: |
+          set -euxo pipefail
+          path="${{ inputs.service_path }}"
+          if [ -z "$path" ]; then path="shopcloud/services/${{ inputs.service }}"; fi
+          python -m pip install -U pip wheel
+          python -m pip install -e "shopcloud[dev]"
+          python -m pip install -e "${path}[dev]"
+
+      - name: Ruff
+        run: |
+          path="${{ inputs.service_path }}"
+          if [ -z "$path" ]; then path="shopcloud/services/${{ inputs.service }}"; fi
+          libs_path="libs"
+          if [ -d "shopcloud/libs" ]; then libs_path="shopcloud/libs"; fi
+          ruff check "${path}" "${libs_path}"
+
+      - name: Pytest
+        run: |
+          path="${{ inputs.service_path }}"
+          if [ -z "$path" ]; then path="shopcloud/services/${{ inputs.service }}"; fi
+          PYTHONPATH=$PWD pytest "${path}/tests" -q
+
+  build:
+    if: ${{ inputs.build_image }}
+    needs: [test]
+    name: Build & push ${{ inputs.service }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.aws_role_arn }}
+      AWS_REGION: ${{ inputs.aws_region }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        if: ${{ github.event_name != 'pull_request' && env.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: ECR login
+        if: ${{ github.event_name != 'pull_request' && env.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
+        run: |
+          set -euxo pipefail
+          path="${{ inputs.service_path }}"
+          if [ -z "$path" ]; then path="shopcloud/services/${{ inputs.service }}"; fi
+          tag="${GITHUB_SHA::12}"
+
+          docker_context="."
+          if [[ "$path" == shopcloud/* ]]; then
+            docker_context="shopcloud"
+          fi
+
+          docker build -f "${path}/Dockerfile" -t "shopcloud-${{ inputs.service }}:${tag}" "${docker_context}"
+
+      - name: Push to ECR
+        if: ${{ github.event_name != 'pull_request' && env.AWS_ROLE_ARN != '' }}
+        run: |
+          set -euxo pipefail
+          tag="${GITHUB_SHA::12}"
+          aws_account="$(aws sts get-caller-identity --query Account --output text)"
+          repo="${aws_account}.dkr.ecr.${AWS_REGION}.amazonaws.com/shopcloud-${{ inputs.service }}"
+          docker tag "shopcloud-${{ inputs.service }}:${tag}" "${repo}:${tag}"
+          docker push "${repo}:${tag}"
+

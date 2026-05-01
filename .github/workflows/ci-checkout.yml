@@ -1,0 +1,28 @@
+name: CI Checkout
+
+on:
+  push:
+    paths:
+      - "shopcloud/services/checkout/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-checkout.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+  pull_request:
+    paths:
+      - "shopcloud/services/checkout/**"
+      - "shopcloud/libs/**"
+      - ".github/workflows/ci-checkout.yml"
+      - ".github/workflows/reusable-build-deploy.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  checkout:
+    uses: ./.github/workflows/reusable-build-deploy.yml
+    with:
+      service: checkout
+      service_path: shopcloud/services/checkout
+    secrets:
+      aws_role_arn: ${{ secrets.AWS_OIDC_ROLE_ARN_DEV }}
