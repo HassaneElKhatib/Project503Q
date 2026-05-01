@@ -77,6 +77,8 @@ spec:
               value: http://auth
             - name: GATEWAY_DB_URL
               value: "sqlite+aiosqlite:////data/gateway.db"
+            - name: USE_LOCAL_GATEWAY_AUTH
+              value: "true"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
