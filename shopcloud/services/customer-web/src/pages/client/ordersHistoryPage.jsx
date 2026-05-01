@@ -17,8 +17,12 @@ const FALLBACK_IMAGE =
 
 function normalizeStatus(status) {
   const value = (status || "").toLowerCase();
-  if (value === "completed" || value === "delivered") return "Completed";
+  if (value === "completed" || value === "delivered") return "Delivered";
   if (value === "cancelled" || value === "canceled") return "Cancelled";
+  if (value === "shipped") return "Shipped";
+  if (value === "processing") return "Processing";
+  if (value === "confirmed") return "Confirmed";
+  if (value === "returned") return "Returned";
   return "Pending";
 }
 
@@ -192,19 +196,39 @@ export default function OrdersHistoryPage() {
                   <div className="flex-1">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
                       <h2 className="font-semibold text-lg sm:text-xl text-secondary">{order._id}</h2> 
-                      {normalizeStatus(order.status) === "Completed" ? 
-                        (<span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full w-fit">
-                        <IoMdCheckmarkCircleOutline className="text-base sm:text-[20px]" />
-                        Delivered
-                         </span>) : normalizeStatus(order.status) === "Pending" ? (
+                      {(() => {
+                        const s = normalizeStatus(order.status);
+                        if (s === "Delivered") return (
+                          <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full w-fit">
+                            <IoMdCheckmarkCircleOutline className="text-base sm:text-[20px]" />
+                            Delivered
+                          </span>
+                        );
+                        if (s === "Shipped") return (
+                          <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-blue-600 bg-blue-50 px-2 sm:px-3 py-1 rounded-full w-fit">
+                            <TbTruckDelivery className="text-base sm:text-[20px]" />
+                            Shipped
+                          </span>
+                        );
+                        if (s === "Processing" || s === "Confirmed") return (
+                          <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-indigo-600 bg-indigo-50 px-2 sm:px-3 py-1 rounded-full w-fit">
+                            <MdOutlineWatchLater className="text-base sm:text-[20px]" />
+                            {s}
+                          </span>
+                        );
+                        if (s === "Cancelled" || s === "Returned") return (
+                          <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-red-500 bg-red-50 px-2 sm:px-3 py-1 rounded-full w-fit">
+                            <MdOutlineWatchLater className="text-base sm:text-[20px]" />
+                            {s}
+                          </span>
+                        );
+                        return (
                           <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-yellow-500 bg-yellow-50 px-2 sm:px-3 py-1 rounded-full w-fit">
-                          <TbTruckDelivery className="text-base sm:text-[20px]" />
-                          Pending
-                        </span>
-                         ) : (<span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-red-500 bg-red-50 px-2 sm:px-3 py-1 rounded-full w-fit">
-                         <MdOutlineWatchLater className="text-base sm:text-[20px]" />
-                         Cancel
-                       </span>)}
+                            <MdOutlineWatchLater className="text-base sm:text-[20px]" />
+                            Pending
+                          </span>
+                        );
+                      })()}
                     </div>
                     <p className="text-xs sm:text-sm text-secondary/60">Ordered on {new Date(order.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
@@ -259,7 +283,7 @@ export default function OrdersHistoryPage() {
                               </div>
                               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
                                 <p className="font-semibold text-sm sm:text-base text-secondary">${(item.quantity * item.price).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                                <button className={`${normalizeStatus(order.status) === "Pending" || normalizeStatus(order.status) === "Cancelled" ? "hidden" : "text-xs sm:text-sm font-bold text-accent-hover hover:text-accent cursor-pointer" }`}
+                                <button className={`${normalizeStatus(order.status) !== "Delivered" ? "hidden" : "text-xs sm:text-sm font-bold text-accent-hover hover:text-accent cursor-pointer" }`}
                                 onClick={() => {
                                   setPopupVisible(true);
                                   setSelectedItem(item);
@@ -299,8 +323,8 @@ export default function OrdersHistoryPage() {
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
                           <button 
-                          disabled={normalizeStatus(order.status) !== "Pending"}
-                          className={`flex-1 bg-red-500 border-2 border-gray-200 text-white font-medium py-2.5 sm:py-3 rounded-lg text-sm sm:text-base ${normalizeStatus(order.status) !== "Pending" ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50 hover:border-red-500 hover:text-red-500 hover:cursor-pointer"}  transition-colors`}
+                          disabled={(order.status || "").toLowerCase() !== "pending"}
+                          className={`flex-1 bg-red-500 border-2 border-gray-200 text-white font-medium py-2.5 sm:py-3 rounded-lg text-sm sm:text-base ${(order.status || "").toLowerCase() !== "pending" ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50 hover:border-red-500 hover:text-red-500 hover:cursor-pointer"}  transition-colors`}
                           onClick={() => {
                             setCancelingOrderId(order._id);
                             setShowCancelModal(true);
@@ -315,7 +339,7 @@ export default function OrdersHistoryPage() {
                           >
                             Contact Support
                           </button>
-                          {normalizeStatus(order.status) === "Completed" && (
+                          {normalizeStatus(order.status) === "Delivered" && (
                             <button
                               className="flex-1 bg-white border-2 border-accent text-accent font-medium py-2.5 sm:py-3 rounded-lg text-sm sm:text-base hover:bg-accent hover:text-white transition-colors"
                               onClick={() => handleGetInvoice(order._id)}
@@ -325,7 +349,7 @@ export default function OrdersHistoryPage() {
                           )}
                         </div>
 
-                        {normalizeStatus(order.status) === "Completed" && (
+                        {normalizeStatus(order.status) === "Delivered" && (
                           <div className="mt-4 p-3 border rounded-lg bg-gray-50">
                             <p className="text-sm font-semibold mb-2">Request a return</p>
                             <textarea

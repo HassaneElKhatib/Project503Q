@@ -41,7 +41,7 @@ spec:
               app: api-gateway
       containers:
         - name: api-gateway
-          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-api-gateway:latest
+          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-api-gateway:v20260502004621
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -61,10 +61,7 @@ spec:
                   name: shopcloud-env
                   key: aws_region
             - name: ALLOWED_ORIGINS
-              valueFrom:
-                configMapKeyRef:
-                  name: shopcloud-env
-                  key: public_origin
+              value: "https://www.welovedassouki.store,https://priv-admin.www.welovedassouki.store"
             - name: CATALOG_BASE_URL
               value: http://catalog
             - name: CART_BASE_URL
@@ -76,14 +73,57 @@ spec:
             - name: AUTH_BASE_URL
               value: http://auth
             - name: GATEWAY_DB_URL
-              value: "sqlite+aiosqlite:////data/gateway.db"
+              valueFrom:
+                secretKeyRef:
+                  name: shared-database
+                  key: writer_url
             - name: USE_LOCAL_GATEWAY_AUTH
-              value: "true"
+              value: "false"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: api-gateway-jwt
                   key: secret
+            # Customer Cognito pool — verifies sc_access cookie / Bearer for /api/users/me.
+            - name: COGNITO_USER_POOL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: user_pool_id
+            - name: COGNITO_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: app_client_id
+            - name: COGNITO_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: region
+            # Admin Cognito pool — verifies sc_access_adm cookie for /api/users/me/admin.
+            - name: COGNITO_ADMIN_USER_POOL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: user_pool_id
+            - name: COGNITO_ADMIN_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: app_client_id
+            - name: COGNITO_ADMIN_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: region
+            - name: S3_IMAGES_BUCKET
+              value: "shopcloud-prod-images-712044128773"
+            - name: S3_IMAGES_REGION
+              value: "eu-central-1"
+            - name: SMTP_FROM_EMAIL
+              value: "hassaneelkhatib@hotmail.com"
+            - name: SMTP_FROM_NAME
+              value: "The Glow Lab"
           resources:
             requests:
               cpu: 100m

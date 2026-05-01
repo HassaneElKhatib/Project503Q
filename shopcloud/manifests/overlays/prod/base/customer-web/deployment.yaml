@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: customer-web
-          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-customer-web:latest
+          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-customer-web:v20260502004621
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

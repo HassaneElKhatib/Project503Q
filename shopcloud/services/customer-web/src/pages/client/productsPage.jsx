@@ -13,7 +13,7 @@ function normalizeProduct(product) {
     ...product,
     productId: product.productId ?? product.id ?? product.sku ?? "unknown-product",
     images: Array.isArray(product.images) ? product.images : [],
-    labelledPrice: Number(product.labelledPrice ?? normalizedPrice),
+    labelledPrice: Number(product.labelledPrice ?? product.lastPrice ?? normalizedPrice),
     price: normalizedPrice,
     category: product.category ?? "general",
   };

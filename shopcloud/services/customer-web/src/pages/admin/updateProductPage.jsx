@@ -21,7 +21,9 @@ export default function UpdateProductPage() {
   const [alternativeNames, setAlternativeNames] = useState((product?.altNames || []).join(","));
   const [labelledPrice, setLabelledPrice] = useState(product?.labelledPrice ?? product?.lastPrice ?? product?.price ?? 0);
   const [price, setPrice] = useState(product?.price ?? 0);
-  const [images, setImages] = useState([]);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageUrls, setImageUrls] = useState(product?.images || []);
+  const [isUploading, setIsUploading] = useState(false);
   const [description, setDescription] = useState(product?.description || "");
   const [stock, setStock] = useState(product?.stock ?? 0);
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
@@ -42,12 +44,6 @@ export default function UpdateProductPage() {
     setIsLoading(true);
     
     try {
-      let imageUrls = product?.images || [];
-
-      if (images.length > 0) {
-        toast("Image upload is disabled for now");
-      }
-
       const alternativeArray = alternativeNames.split(",").map(name => name.trim()).filter(Boolean);
       
       const productData = {
@@ -134,19 +130,78 @@ export default function UpdateProductPage() {
           </div>
 
           <div className="md:col-span-2 flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-700">Images (disabled for now)</label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={(e) => setImages(e.target.files)}
-              disabled
-              className="w-full border border-gray-300 rounded-md px-3 py-2 file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-accent hover:file:bg-blue-100"
-            />
-            {((product?.images) || []).length > 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                Current: {((product?.images) || []).length} image(s) uploaded
-              </p>
+            <label className="text-sm font-semibold text-gray-700">Product Images</label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={isUploading}
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (!files.length) return;
+                  setIsUploading(true);
+                  const uploaded = [];
+                  for (const file of files) {
+                    try {
+                      const form = new FormData();
+                      form.append("file", file);
+                      const res = await axios.post(
+                        `${publicApiOrigin()}/api/images/upload`,
+                        form,
+                        { headers: { ...optionalBearerHeaders(), "Content-Type": "multipart/form-data" }, withCredentials: true }
+                      );
+                      uploaded.push(res.data.url);
+                    } catch (err) {
+                      console.error("Upload failed:", err);
+                      toast.error(`Failed to upload ${file.name}`);
+                    }
+                  }
+                  if (uploaded.length) setImageUrls((prev) => [...prev, ...uploaded]);
+                  setIsUploading(false);
+                  e.target.value = "";
+                }}
+                className="flex-1 border border-gray-300 h-10 rounded-md px-3 py-1.5 text-sm file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:bg-accent file:text-white file:font-medium file:cursor-pointer"
+              />
+              {isUploading && <span className="text-sm text-gray-500 animate-pulse">Uploading...</span>}
+            </div>
+            <div className="flex gap-2 mt-1">
+              <input
+                type="url"
+                value={imageUrlInput}
+                onChange={(e) => setImageUrlInput(e.target.value)}
+                placeholder="Or paste an image URL and click Add"
+                className="flex-1 border border-gray-300 h-10 rounded-md px-3 focus:ring-2 focus:ring-accent focus:border-transparent text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const url = imageUrlInput.trim();
+                  if (url && !imageUrls.includes(url)) {
+                    setImageUrls([...imageUrls, url]);
+                    setImageUrlInput("");
+                  }
+                }}
+                className="px-4 py-2 bg-accent text-white rounded-md hover:bg-accent-hover transition-colors font-medium"
+              >
+                Add
+              </button>
+            </div>
+            {imageUrls.length > 0 && (
+              <div className="flex flex-wrap gap-3 mt-2">
+                {imageUrls.map((url, idx) => (
+                  <div key={idx} className="relative group">
+                    <img src={url} alt={`Preview ${idx + 1}`} className="w-20 h-20 object-cover rounded-md border border-gray-200" />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== idx))}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

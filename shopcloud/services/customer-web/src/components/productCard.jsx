@@ -47,10 +47,9 @@ export default function ProductCard(props) {
       </div>
 
       {/* Product Info */}
-      <div className="w-full h-[150px] flex flex-col p-3">
+      <div className="w-full h-[150px] flex flex-col p-4">
         <div>
-          <span className="text-gray-400 text-xs">{product.productId}</span>
-          <h1 className="text-lg font-bold leading-tight">
+          <h1 className="text-lg font-bold leading-tight line-clamp-2">
             {product.name}{" "}
             <span className="text-gray-500 text-sm font-medium">
               ({product.category})
@@ -59,7 +58,7 @@ export default function ProductCard(props) {
         </div>
 
         {/* Price Section */}
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between">
           {product.labelledPrice > product.price ? (
             <p className="text-base font-semibold">
               <span className="line-through mr-2 text-gray-400 text-sm">

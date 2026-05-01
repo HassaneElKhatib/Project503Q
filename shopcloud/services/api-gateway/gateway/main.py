@@ -22,6 +22,7 @@ from .routes import (
     categories,
     cart,
     dashboard,
+    images,
     orders,
     products,
     reviews,
@@ -80,3 +81,4 @@ app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(site_reviews.router, prefix="/api/site-reviews", tags=["site-reviews"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(images.router, prefix="/api/images", tags=["images"])

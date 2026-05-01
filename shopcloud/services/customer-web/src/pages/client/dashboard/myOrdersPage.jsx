@@ -54,18 +54,32 @@ export default function MyOrdersPage() {
           Delivered
         </span>
       );
-    } else if (normalized === "pending") {
+    } else if (normalized === "shipped") {
       return (
-        <span className="flex items-center gap-1.5 text-sm font-medium text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
           <TbTruckDelivery className="text-[18px]" />
-          Pending
+          Shipped
+        </span>
+      );
+    } else if (normalized === "processing" || normalized === "confirmed") {
+      return (
+        <span className="flex items-center gap-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full">
+          <MdOutlineWatchLater className="text-[18px]" />
+          {normalized.charAt(0).toUpperCase() + normalized.slice(1)}
+        </span>
+      );
+    } else if (normalized === "cancelled" || normalized === "canceled" || normalized === "returned") {
+      return (
+        <span className="flex items-center gap-1.5 text-sm font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
+          <MdOutlineWatchLater className="text-[18px]" />
+          {normalized.charAt(0).toUpperCase() + normalized.slice(1)}
         </span>
       );
     } else {
       return (
-        <span className="flex items-center gap-1.5 text-sm font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-full">
+        <span className="flex items-center gap-1.5 text-sm font-medium text-yellow-600 bg-yellow-50 px-3 py-1.5 rounded-full">
           <MdOutlineWatchLater className="text-[18px]" />
-          Cancelled
+          Pending
         </span>
       );
     }
