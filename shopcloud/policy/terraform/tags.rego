@@ -1,8 +1,5 @@
 package terraform.tags
 
-import future.keywords.in
-import future.keywords.if
-
 required_tags := ["Project", "Environment", "ManagedBy"]
 
 taggable_types := {
@@ -20,7 +17,7 @@ taggable_types := {
 	"aws_cloudwatch_log_group",
 }
 
-warn contains msg if {
+warn[msg] {
 	resource := input.resource_changes[_]
 	taggable_types[resource.type]
 	resource.change.actions[_] == "create"
@@ -29,12 +26,12 @@ warn contains msg if {
 	msg := sprintf("Resource %s missing required tag '%s'", [resource.address, tag])
 }
 
-has_tag(resource, tag) if {
+has_tag(resource, tag) {
 	tags := resource.change.after.tags
 	tags[tag]
 }
 
-has_tag(resource, tag) if {
+has_tag(resource, tag) {
 	tags := resource.change.after.tags_all
 	tags[tag]
 }

@@ -204,7 +204,6 @@ def send_invoice_email(*, to_email: str, customer_name: str, order: dict, invoic
     # Primary path in EKS: SES API with IRSA and raw MIME (supports attachments).
     try:
         import boto3
-        from botocore.exceptions import BotoCoreError, ClientError
 
         boto3.client("ses", region_name=_ses_region()).send_raw_email(
             Source=msg["From"],
