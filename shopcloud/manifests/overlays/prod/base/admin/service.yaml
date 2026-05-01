@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin
+  namespace: app
+  labels:
+    app: admin
+spec:
+  type: ClusterIP
+  selector:
+    app: admin
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin
+  namespace: app
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::712044128773:role/shopcloud-prod-eks-admin-irsa

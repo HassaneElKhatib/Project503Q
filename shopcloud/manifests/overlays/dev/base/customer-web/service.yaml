@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-web
+  namespace: app
+  labels:
+    app: customer-web
+spec:
+  type: ClusterIP
+  selector:
+    app: customer-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

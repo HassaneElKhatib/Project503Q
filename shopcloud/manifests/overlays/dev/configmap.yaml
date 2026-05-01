@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopcloud-env
+data:
+  environment: dev
+  aws_region: eu-central-1
+  # Match Terraform dev example until real DNS exists; override after Route53/ACM.
+  public_origin: https://dev.shopcloud.example.com

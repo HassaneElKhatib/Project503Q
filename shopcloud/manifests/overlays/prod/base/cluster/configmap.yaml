@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopcloud-env
+  namespace: app
+data:
+  environment: prod
+  aws_region: eu-central-1
+  public_origin: https://www.welovedassouki.store

@@ -1,6 +1,6 @@
-# Copy to backend.hcl after running infra/bootstrap once.
-# AWS account ID is prefilled for this workspace.
+# GitHub Actions uses committed backend.tf (same values). Use backend.hcl locally only if you override.
 #
+# Copy to backend.hcl after running infra/bootstrap once:
 #   cd infra/bootstrap && terraform init && terraform apply
 #   cd ../envs/dev && cp backend.hcl.example backend.hcl
 #   terraform init -backend-config=backend.hcl

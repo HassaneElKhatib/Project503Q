@@ -1,58 +1,15 @@
-# Top-level kustomization for the entire ShopCloud app.
+# ShopCloud manifests — select environment explicitly:
 #
-# Apply with:
-#   kubectl apply -k manifests/
+#   kubectl apply -k overlays/prod    # namespace app, prod Secrets paths, prod ECR images
+#   kubectl apply -k overlays/dev     # namespace app-dev, /shopcloud/dev/* paths, dev ECR repos
 #
-# Order doesn't matter to kubectl (it sorts internally), but if you ever
-# need to bootstrap manually do this order:
-#   1. namespace + configmap + external-secrets
-#   2. services + service accounts
-#   3. deployments + HPAs + PDBs
-#   4. ingresses
-#   5. network policies
+# Do not mix overlays on one cluster without confirming VPC CIDR and DNS/TLS per manifests/README.md.
+# kubectl sorts resources internally; if bootstrapping manually: namespace → config/secrets → workloads → ingress → netpol.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # Cluster-wide
-  - cluster/namespace.yaml
-  - cluster/configmap.yaml
-  - cluster/cluster-secret-store.yaml
-  - cluster/external-secrets.yaml
-  - cluster/service-block-admin.yaml
-  - cluster/ingress-public.yaml
-  - cluster/ingress-admin.yaml
-  - cluster/networkpolicies.yaml
-  - cluster/pdb.yaml
-  # IRSA for one-off DB migrations (Job applied separately from migrations/job.yaml).
-  - migrations/serviceaccount.yaml
-  # Catalog (Person A)
-  - catalog/deployment.yaml
-  - catalog/service.yaml
-  - catalog/hpa.yaml
-  # Auth (Person A)
-  - auth/deployment.yaml
-  - auth/service.yaml
-  - auth/hpa.yaml
-  # Cart (Person B)
-  - cart/deployment.yaml
-  - cart/service.yaml
-  - cart/hpa.yaml
-  # Admin (Person B)
-  - admin/deployment.yaml
-  - admin/service.yaml
-  - admin/hpa.yaml
-  # Checkout (Person C)
-  - checkout/deployment.yaml
-  - checkout/service.yaml
-  - checkout/hpa.yaml
-  # API Gateway (BFF for the customer-web SPA)
-  - api-gateway/deployment.yaml
-  - api-gateway/service.yaml
-  - api-gateway/hpa.yaml
-  # Customer Web SPA
-  - customer-web/deployment.yaml
-  - customer-web/service.yaml
+  - overlays/prod
 
 commonLabels:
   app.kubernetes.io/part-of: shopcloud
