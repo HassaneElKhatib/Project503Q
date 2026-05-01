@@ -159,19 +159,30 @@ jobs:
       AWS_ROLE_ARN: ${{ secrets.aws_role_arn }}
       AWS_REGION: ${{ inputs.aws_region }}
     steps:
+      - name: Guard – require credentials
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ]; then
+            echo "::notice::AWS_ROLE_ARN not configured — skipping deploy for ${{ inputs.service }}"
+            exit 0
+          fi
+          echo "has_creds=true" >> "$GITHUB_ENV"
+
       - name: Configure AWS credentials (OIDC)
+        if: env.has_creds == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig for EKS
+        if: env.has_creds == 'true'
         run: |
           aws eks update-kubeconfig \
             --name "${{ inputs.eks_cluster_name }}" \
             --region "${{ env.AWS_REGION }}"
 
       - name: Deploy to EKS
+        if: env.has_creds == 'true'
         run: |
           set -euxo pipefail
           tag="${GITHUB_SHA::12}"
@@ -183,13 +194,14 @@ jobs:
             -n "${{ inputs.k8s_namespace }}"
 
       - name: Wait for rollout
+        if: env.has_creds == 'true'
         run: |
           kubectl rollout status deployment/${{ inputs.service }} \
             -n "${{ inputs.k8s_namespace }}" \
             --timeout=300s
 
       - name: Rollback on failure
-        if: failure()
+        if: failure() && env.has_creds == 'true'
         run: |
           echo "::warning::Deployment failed — rolling back ${{ inputs.service }}"
           kubectl rollout undo deployment/${{ inputs.service }} \
