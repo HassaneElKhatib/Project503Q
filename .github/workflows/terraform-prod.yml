@@ -208,6 +208,7 @@ jobs:
         run: test -f shopcloud/services/invoice-worker/dist/invoice-worker.zip
 
       - name: Terraform fmt
+        working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
 
       - name: Terraform init
@@ -521,6 +522,7 @@ jobs:
         run: test -f shopcloud/services/invoice-worker/dist/invoice-worker.zip
 
       - name: Terraform fmt
+        working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
 
       - name: Terraform init
