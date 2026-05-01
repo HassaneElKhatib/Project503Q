@@ -1,0 +1,44 @@
+name: Reusable Terraform Module CI
+
+on:
+  workflow_call:
+    inputs:
+      module_path:
+        description: "Path to the Terraform module to validate."
+        required: true
+        type: string
+      terraform_version:
+        description: "Terraform version to use."
+        required: false
+        type: string
+        default: "1.7.5"
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-module-ci:
+    name: Validate Terraform module
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ${{ inputs.module_path }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
