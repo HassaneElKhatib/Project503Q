@@ -7,6 +7,11 @@ on:
         description: "Path to the Terraform module to validate."
         required: true
         type: string
+      module_name:
+        description: "Human-readable module name for logs."
+        required: false
+        type: string
+        default: "terraform module"
       terraform_version:
         description: "Terraform version to use."
         required: false
@@ -18,7 +23,7 @@ permissions:
 
 jobs:
   terraform-module-ci:
-    name: Validate Terraform module
+    name: Validate ${{ inputs.module_name }}
     runs-on: ubuntu-latest
 
     defaults:
@@ -28,6 +33,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Show module info
+        run: |
+          echo "Module name: ${{ inputs.module_name }}"
+          echo "Module path: ${{ inputs.module_path }}"
+          pwd
+          ls -la
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
