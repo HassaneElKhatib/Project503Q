@@ -7,7 +7,10 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # Regional ACM cert for priv-admin.www.welovedassouki.store (provisioned by infra/envs/prod/modules/admin_private_access).
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:712044128773:certificate/5a71e921-9925-486c-9114-cb4c4fc1f6e9
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/group.name: shopcloud-admin
     # VPC CIDR + Client VPN client CIDR (see infra envs/prod variables.tf and terraform.tfvars).
@@ -16,9 +19,9 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    # Wildcard host so the internal ALB accepts any private name (VPN/internal DNS).
-    # Promote to a fixed host (e.g. priv-admin.www.welovedassouki.store) once Route53 + ACM are added.
-    - http:
+    # Admin is reachable only at the private FQDN over HTTPS, from VPC + VPN client CIDRs.
+    - host: priv-admin.www.welovedassouki.store
+      http:
         paths:
           - path: /auth/admin
             pathType: Prefix
