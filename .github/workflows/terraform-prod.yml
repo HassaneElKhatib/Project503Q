@@ -298,27 +298,53 @@ jobs:
             });
 
       - name: Post plan to PR
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const plan = `${{ steps.plan.outputs.stdout }}`;
-            const trimmed = plan.length > 60000
-              ? plan.substring(0, 60000) + "\n...truncated..."
-              : plan;
-            const body = [
-              "#### Terraform Plan (prod)",
-              "",
-              "```",
-              trimmed,
-              "```",
-              "",
-              `Triggered by @${{ github.actor }} on commit \`${{ github.sha }}\``
-            ].join("\n");
-            github.rest.issues.createComment({
+            const fs = require('fs');
+            const planPath = '${{ env.TF_WORKING_DIR }}/tfplan.json';
+
+            let summary = 'Terraform plan completed. See uploaded artifact for full tfplan.json.';
+
+            if (fs.existsSync(planPath)) {
+              const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+              const changes = plan.resource_changes || [];
+
+              let add = 0;
+              let change = 0;
+              let destroy = 0;
+              const destructive = [];
+
+              for (const rc of changes) {
+                const actions = rc.change?.actions || [];
+
+                if (actions.includes('create') && !actions.includes('delete')) add++;
+                if (actions.includes('update')) change++;
+                if (actions.includes('delete')) {
+                  destroy++;
+                  destructive.push(`- ${rc.address} (${rc.type}) actions=${actions.join(',')}`);
+                }
+              }
+
+              summary = [
+                '#### Terraform Plan (prod)',
+                '',
+                `Plan summary from tfplan.json: **${add} to add, ${change} to change, ${destroy} to destroy/replace**.`,
+                '',
+                destructive.length
+                  ? ['Destructive/replacement actions:', '', ...destructive.slice(0, 30)].join('\n')
+                  : 'No destructive actions detected in tfplan.json.',
+                '',
+                `Triggered by @${{ github.actor }} on commit \`${{ github.sha }}\`.`
+              ].join('\n');
+            }
+
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body
+              body: summary
             });
 
   apply:
