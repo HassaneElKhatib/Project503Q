@@ -7,27 +7,37 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: PLACEHOLDER_ADMIN_ALB_CERT_ARN
-    alb.ingress.kubernetes.io/healthcheck-path: /health/live
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/group.name: shopcloud-admin
-    alb.ingress.kubernetes.io/inbound-cidrs: PLACEHOLDER_ADMIN_INGRESS_CIDR
+    # VPC CIDR + Client VPN client CIDR (see infra envs/prod variables.tf and terraform.tfvars).
+    alb.ingress.kubernetes.io/inbound-cidrs: 10.30.0.0/16,10.222.0.0/22
+    alb.ingress.kubernetes.io/subnets: subnet-0e3a399645d66db95,subnet-0a9ee9478adf9adfe
 spec:
+  ingressClassName: alb
   rules:
-    - host: PLACEHOLDER_ADMIN_HOST   # e.g. admin.dev.internal.shopcloud.example
-      http:
+    # Wildcard host so the internal ALB accepts any private name (VPN/internal DNS).
+    # Promote to a fixed host (e.g. priv-admin.www.welovedassouki.store) once Route53 + ACM are added.
+    - http:
         paths:
-          - path: /api/admin
-            pathType: Prefix
-            backend:
-              service:
-                name: admin
-                port:
-                  number: 80
-          - path: /api/me
+          - path: /auth/admin
             pathType: Prefix
             backend:
               service:
                 name: auth
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-web
                 port:
                   number: 80

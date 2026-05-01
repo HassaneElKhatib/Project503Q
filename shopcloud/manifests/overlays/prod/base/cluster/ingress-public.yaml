@@ -7,18 +7,44 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # CloudFront origin uses HTTP:80 (see infra envs/prod/modules/edge CloudFront custom_origin_config).
+    # ALB must expose port 80 (redirect → 443); HTTPS-only listeners cause CloudFront 504 timeouts.
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # No ssl-redirect: CloudFront origin uses HTTP:80; redirect to https://www… loops via CloudFront DNS → 504.
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:712044128773:certificate/933f1331-66ff-492f-80d1-2f4f9a62c2a0
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
     alb.ingress.kubernetes.io/group.name: shopcloud-public
+    # Admin must only be reachable over the private internal ALB (VPN). Block at the public edge.
+    alb.ingress.kubernetes.io/actions.admin-403: >-
+      {"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"403","messageBody":"Forbidden"}}
 spec:
   ingressClassName: alb
   rules:
     - host: www.welovedassouki.store
       http:
         paths:
+          - path: /api/users/me/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-403
+                port:
+                  name: use-annotation
+          - path: /auth/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-403
+                port:
+                  name: use-annotation
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-403
+                port:
+                  name: use-annotation
           - path: /auth
             pathType: Prefix
             backend:
