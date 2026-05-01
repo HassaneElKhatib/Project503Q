@@ -68,7 +68,7 @@ resource "aws_iam_role_policy" "catalog" {
         Resource = length(compact([
           var.secret_arn_shared_database,
           var.secret_arn_shared_redis
-        ])) > 0 ? compact([
+          ])) > 0 ? compact([
           var.secret_arn_shared_database,
           var.secret_arn_shared_redis
         ]) : ["*"]
@@ -193,7 +193,7 @@ resource "aws_iam_role_policy" "db_migrate" {
         ]
         Resource = length(compact([
           var.secret_arn_shared_database
-        ])) > 0 ? compact([
+          ])) > 0 ? compact([
           var.secret_arn_shared_database
         ]) : ["*"]
       }
