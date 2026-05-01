@@ -15,8 +15,33 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
+    # Named host for when DNS (Route53) or local hosts file points at this ALB.
     - host: dev.shopcloud.example.com
       http:
+        paths:
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-web
+                port:
+                  number: 80
+    # No host: matches the ALB DNS name directly (browser Host = *.elb.amazonaws.com).
+    - http:
         paths:
           - path: /auth
             pathType: Prefix
