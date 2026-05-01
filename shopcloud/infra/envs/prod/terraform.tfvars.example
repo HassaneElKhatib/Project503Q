@@ -6,7 +6,7 @@ aws_region  = "eu-central-1"
 # --- Network / Edge (Person A) ---
 enable_edge        = true
 domain_name        = "www.welovedassouki.store"
-origin_domain_name = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
+origin_domain_name = "k8s-shopcloudpublic-3976a6d8dc-1488320077.eu-central-1.elb.amazonaws.com"
 
 # Private admin DNS/ACM. Terraform creates:
 #   priv-admin.www.welovedassouki.store
@@ -56,8 +56,10 @@ admin_logout_url   = "https://priv-admin.www.welovedassouki.store/"
 # --- Data plane (Person C) ---
 enable_data               = true
 kms_key_arn               = "REPLACE_PRIMARY_REGION_KMS_KEY_ARN"
-rds_backup_retention_days = 7
-ses_from_address          = "noreply@welovedassouki.store"
+rds_backup_retention_days = 1
+rds_instance_class        = "db.t3.micro"
+rds_replica_instance_class = "db.t3.micro"
+ses_from_address          = "noreply@www.welovedassouki.store"
 
 # Cross-region replica
 replica_aws_region              = "eu-west-1"

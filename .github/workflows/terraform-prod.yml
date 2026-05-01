@@ -53,6 +53,12 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME_PROD }}
           aws-region: ${{ env.AWS_REGION_PROD }}
 
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region eu-central-1 \
+            --name shopcloud-prod-eks
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -62,24 +68,33 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
           DOMAIN_NAME: ${{ vars.PROD_DOMAIN_NAME || 'www.welovedassouki.store' }}
-          ORIGIN_DOMAIN_NAME: ${{ vars.PROD_ORIGIN_DOMAIN_NAME || 'k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com' }}
+          ORIGIN_DOMAIN_NAME: ${{ vars.PROD_ORIGIN_DOMAIN_NAME || 'k8s-shopcloudpublic-3976a6d8dc-1488320077.eu-central-1.elb.amazonaws.com' }}
           COOKIE_DOMAIN: ${{ vars.PROD_COOKIE_DOMAIN || '.www.welovedassouki.store' }}
           ADMIN_PRIVATE_DNS_RECORD_LABEL: ${{ vars.PROD_ADMIN_PRIVATE_DNS_RECORD_LABEL || 'priv-admin' }}
           CLIENT_VPN_CLIENT_CIDR: ${{ vars.PROD_CLIENT_VPN_CLIENT_CIDR || '10.222.0.0/22' }}
+          KUBERNETES_VERSION: ${{ vars.PROD_KUBERNETES_VERSION || '1.30' }}
+          NODE_INSTANCE_TYPES: ${{ vars.PROD_NODE_INSTANCE_TYPES || '["t3.micro"]' }}
+          NODE_DESIRED_SIZE: ${{ vars.PROD_NODE_DESIRED_SIZE || '2' }}
+          NODE_MIN_SIZE: ${{ vars.PROD_NODE_MIN_SIZE || '2' }}
+          NODE_MAX_SIZE: ${{ vars.PROD_NODE_MAX_SIZE || '5' }}
+          RDS_BACKUP_RETENTION_DAYS: ${{ vars.PROD_RDS_BACKUP_RETENTION_DAYS || '1' }}
+          RDS_INSTANCE_CLASS: ${{ vars.PROD_RDS_INSTANCE_CLASS || 'db.t3.micro' }}
+          RDS_REPLICA_INSTANCE_CLASS: ${{ vars.PROD_RDS_REPLICA_INSTANCE_CLASS || 'db.t3.micro' }}
+          REPLICA_AWS_REGION: ${{ vars.PROD_REPLICA_AWS_REGION || 'eu-west-1' }}
           CLIENT_VPN_SERVER_CERTIFICATE_ARN: ${{ secrets.PROD_CLIENT_VPN_SERVER_CERTIFICATE_ARN }}
           CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN: ${{ secrets.PROD_CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN }}
           KMS_KEY_ARN: ${{ secrets.PROD_KMS_KEY_ARN }}
           REPLICA_VPC_ID: ${{ vars.PROD_REPLICA_VPC_ID }}
           REPLICA_PRIVATE_DATA_SUBNET_IDS: ${{ vars.PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS }}
           REPLICA_KMS_KEY_ARN: ${{ vars.PROD_REPLICA_KMS_KEY_ARN }}
-          SES_FROM_ADDRESS: ${{ vars.PROD_SES_FROM_ADDRESS || 'noreply@welovedassouki.store' }}
+          SES_FROM_ADDRESS: ${{ vars.PROD_SES_FROM_ADDRESS || 'noreply@www.welovedassouki.store' }}
         run: |
-          test -n "$CLIENT_VPN_SERVER_CERTIFICATE_ARN"
-          test -n "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN"
-          test -n "$KMS_KEY_ARN"
-          test -n "$REPLICA_VPC_ID"
-          test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS"
-          test -n "$REPLICA_KMS_KEY_ARN"
+          test -n "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" || { echo "Missing PROD_CLIENT_VPN_SERVER_CERTIFICATE_ARN"; exit 1; }
+          test -n "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" || { echo "Missing PROD_CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN"; exit 1; }
+          test -n "$KMS_KEY_ARN" || { echo "Missing PROD_KMS_KEY_ARN"; exit 1; }
+          test -n "$REPLICA_VPC_ID" || { echo "Missing PROD_REPLICA_VPC_ID"; exit 1; }
+          test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS" || { echo "Missing PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS"; exit 1; }
+          test -n "$REPLICA_KMS_KEY_ARN" || { echo "Missing PROD_REPLICA_KMS_KEY_ARN"; exit 1; }
 
           jq -n \
             --arg domain_name "$DOMAIN_NAME" \
@@ -87,6 +102,15 @@ jobs:
             --arg cookie_domain "$COOKIE_DOMAIN" \
             --arg admin_private_dns_record_label "$ADMIN_PRIVATE_DNS_RECORD_LABEL" \
             --arg client_vpn_client_cidr "$CLIENT_VPN_CLIENT_CIDR" \
+            --arg kubernetes_version "$KUBERNETES_VERSION" \
+            --argjson node_instance_types "$NODE_INSTANCE_TYPES" \
+            --argjson node_desired_size "$NODE_DESIRED_SIZE" \
+            --argjson node_min_size "$NODE_MIN_SIZE" \
+            --argjson node_max_size "$NODE_MAX_SIZE" \
+            --argjson rds_backup_retention_days "$RDS_BACKUP_RETENTION_DAYS" \
+            --arg rds_instance_class "$RDS_INSTANCE_CLASS" \
+            --arg rds_replica_instance_class "$RDS_REPLICA_INSTANCE_CLASS" \
+            --arg replica_aws_region "$REPLICA_AWS_REGION" \
             --arg client_vpn_server_certificate_arn "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" \
             --arg client_vpn_client_root_certificate_chain_arn "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" \
             --arg kms_key_arn "$KMS_KEY_ARN" \
@@ -121,13 +145,36 @@ jobs:
               client_vpn_server_certificate_arn: $client_vpn_server_certificate_arn,
               client_vpn_client_root_certificate_chain_arn: $client_vpn_client_root_certificate_chain_arn,
 
+              kubernetes_version: $kubernetes_version,
+              node_instance_types: $node_instance_types,
+              node_desired_size: $node_desired_size,
+              node_min_size: $node_min_size,
+              node_max_size: $node_max_size,
+
+              rds_backup_retention_days: $rds_backup_retention_days,
+              rds_instance_class: $rds_instance_class,
+              rds_replica_instance_class: $rds_replica_instance_class,
+
               kms_key_arn: $kms_key_arn,
+              replica_aws_region: $replica_aws_region,
               replica_vpc_id: $replica_vpc_id,
               replica_private_data_subnet_ids: $replica_private_data_subnet_ids,
               replica_kms_key_arn: $replica_kms_key_arn,
 
               ses_from_address: $ses_from_address
             }' > prod.ci.auto.tfvars.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build invoice worker artifact
+        working-directory: shopcloud/services/invoice-worker
+        run: |
+          bash build.sh
+
+      - name: Verify invoice worker artifact
+        run: test -f shopcloud/services/invoice-worker/dist/invoice-worker.zip
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
@@ -262,6 +309,12 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME_PROD }}
           aws-region: ${{ env.AWS_REGION_PROD }}
 
+      - name: Configure kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --region eu-central-1 \
+            --name shopcloud-prod-eks
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -271,24 +324,33 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
           DOMAIN_NAME: ${{ vars.PROD_DOMAIN_NAME || 'www.welovedassouki.store' }}
-          ORIGIN_DOMAIN_NAME: ${{ vars.PROD_ORIGIN_DOMAIN_NAME || 'k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com' }}
+          ORIGIN_DOMAIN_NAME: ${{ vars.PROD_ORIGIN_DOMAIN_NAME || 'k8s-shopcloudpublic-3976a6d8dc-1488320077.eu-central-1.elb.amazonaws.com' }}
           COOKIE_DOMAIN: ${{ vars.PROD_COOKIE_DOMAIN || '.www.welovedassouki.store' }}
           ADMIN_PRIVATE_DNS_RECORD_LABEL: ${{ vars.PROD_ADMIN_PRIVATE_DNS_RECORD_LABEL || 'priv-admin' }}
           CLIENT_VPN_CLIENT_CIDR: ${{ vars.PROD_CLIENT_VPN_CLIENT_CIDR || '10.222.0.0/22' }}
+          KUBERNETES_VERSION: ${{ vars.PROD_KUBERNETES_VERSION || '1.30' }}
+          NODE_INSTANCE_TYPES: ${{ vars.PROD_NODE_INSTANCE_TYPES || '["t3.micro"]' }}
+          NODE_DESIRED_SIZE: ${{ vars.PROD_NODE_DESIRED_SIZE || '2' }}
+          NODE_MIN_SIZE: ${{ vars.PROD_NODE_MIN_SIZE || '2' }}
+          NODE_MAX_SIZE: ${{ vars.PROD_NODE_MAX_SIZE || '5' }}
+          RDS_BACKUP_RETENTION_DAYS: ${{ vars.PROD_RDS_BACKUP_RETENTION_DAYS || '1' }}
+          RDS_INSTANCE_CLASS: ${{ vars.PROD_RDS_INSTANCE_CLASS || 'db.t3.micro' }}
+          RDS_REPLICA_INSTANCE_CLASS: ${{ vars.PROD_RDS_REPLICA_INSTANCE_CLASS || 'db.t3.micro' }}
+          REPLICA_AWS_REGION: ${{ vars.PROD_REPLICA_AWS_REGION || 'eu-west-1' }}
           CLIENT_VPN_SERVER_CERTIFICATE_ARN: ${{ secrets.PROD_CLIENT_VPN_SERVER_CERTIFICATE_ARN }}
           CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN: ${{ secrets.PROD_CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN }}
           KMS_KEY_ARN: ${{ secrets.PROD_KMS_KEY_ARN }}
           REPLICA_VPC_ID: ${{ vars.PROD_REPLICA_VPC_ID }}
           REPLICA_PRIVATE_DATA_SUBNET_IDS: ${{ vars.PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS }}
           REPLICA_KMS_KEY_ARN: ${{ vars.PROD_REPLICA_KMS_KEY_ARN }}
-          SES_FROM_ADDRESS: ${{ vars.PROD_SES_FROM_ADDRESS || 'noreply@welovedassouki.store' }}
+          SES_FROM_ADDRESS: ${{ vars.PROD_SES_FROM_ADDRESS || 'noreply@www.welovedassouki.store' }}
         run: |
-          test -n "$CLIENT_VPN_SERVER_CERTIFICATE_ARN"
-          test -n "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN"
-          test -n "$KMS_KEY_ARN"
-          test -n "$REPLICA_VPC_ID"
-          test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS"
-          test -n "$REPLICA_KMS_KEY_ARN"
+          test -n "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" || { echo "Missing PROD_CLIENT_VPN_SERVER_CERTIFICATE_ARN"; exit 1; }
+          test -n "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" || { echo "Missing PROD_CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN"; exit 1; }
+          test -n "$KMS_KEY_ARN" || { echo "Missing PROD_KMS_KEY_ARN"; exit 1; }
+          test -n "$REPLICA_VPC_ID" || { echo "Missing PROD_REPLICA_VPC_ID"; exit 1; }
+          test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS" || { echo "Missing PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS"; exit 1; }
+          test -n "$REPLICA_KMS_KEY_ARN" || { echo "Missing PROD_REPLICA_KMS_KEY_ARN"; exit 1; }
 
           jq -n \
             --arg domain_name "$DOMAIN_NAME" \
@@ -296,6 +358,15 @@ jobs:
             --arg cookie_domain "$COOKIE_DOMAIN" \
             --arg admin_private_dns_record_label "$ADMIN_PRIVATE_DNS_RECORD_LABEL" \
             --arg client_vpn_client_cidr "$CLIENT_VPN_CLIENT_CIDR" \
+            --arg kubernetes_version "$KUBERNETES_VERSION" \
+            --argjson node_instance_types "$NODE_INSTANCE_TYPES" \
+            --argjson node_desired_size "$NODE_DESIRED_SIZE" \
+            --argjson node_min_size "$NODE_MIN_SIZE" \
+            --argjson node_max_size "$NODE_MAX_SIZE" \
+            --argjson rds_backup_retention_days "$RDS_BACKUP_RETENTION_DAYS" \
+            --arg rds_instance_class "$RDS_INSTANCE_CLASS" \
+            --arg rds_replica_instance_class "$RDS_REPLICA_INSTANCE_CLASS" \
+            --arg replica_aws_region "$REPLICA_AWS_REGION" \
             --arg client_vpn_server_certificate_arn "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" \
             --arg client_vpn_client_root_certificate_chain_arn "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" \
             --arg kms_key_arn "$KMS_KEY_ARN" \
@@ -330,13 +401,36 @@ jobs:
               client_vpn_server_certificate_arn: $client_vpn_server_certificate_arn,
               client_vpn_client_root_certificate_chain_arn: $client_vpn_client_root_certificate_chain_arn,
 
+              kubernetes_version: $kubernetes_version,
+              node_instance_types: $node_instance_types,
+              node_desired_size: $node_desired_size,
+              node_min_size: $node_min_size,
+              node_max_size: $node_max_size,
+
+              rds_backup_retention_days: $rds_backup_retention_days,
+              rds_instance_class: $rds_instance_class,
+              rds_replica_instance_class: $rds_replica_instance_class,
+
               kms_key_arn: $kms_key_arn,
+              replica_aws_region: $replica_aws_region,
               replica_vpc_id: $replica_vpc_id,
               replica_private_data_subnet_ids: $replica_private_data_subnet_ids,
               replica_kms_key_arn: $replica_kms_key_arn,
 
               ses_from_address: $ses_from_address
             }' > prod.ci.auto.tfvars.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build invoice worker artifact
+        working-directory: shopcloud/services/invoice-worker
+        run: |
+          bash build.sh
+
+      - name: Verify invoice worker artifact
+        run: test -f shopcloud/services/invoice-worker/dist/invoice-worker.zip
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive

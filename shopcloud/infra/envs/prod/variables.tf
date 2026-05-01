@@ -149,7 +149,7 @@ variable "domain_name" {
 
 variable "origin_domain_name" {
   type    = string
-  default = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
+  default = "k8s-shopcloudpublic-3976a6d8dc-1488320077.eu-central-1.elb.amazonaws.com"
 }
 
 ############################################
@@ -162,27 +162,27 @@ variable "enable_eks" {
 
 variable "kubernetes_version" {
   type    = string
-  default = "1.29"
+  default = "1.30"
 }
 
 variable "node_instance_types" {
   type    = list(string)
-  default = ["t3.large"]
+  default = ["t3.micro"]
 }
 
 variable "node_desired_size" {
   type    = number
-  default = 3
+  default = 2
 }
 
 variable "node_min_size" {
   type    = number
-  default = 3
+  default = 2
 }
 
 variable "node_max_size" {
   type    = number
-  default = 6
+  default = 5
 }
 
 variable "vpc_cni_enable_prefix_delegation" {
@@ -255,22 +255,22 @@ variable "kms_key_arn" {
 
 variable "rds_backup_retention_days" {
   type    = number
-  default = 7
+  default = 1
 }
 
 variable "rds_instance_class" {
   type    = string
-  default = "db.r6g.large"
+  default = "db.t3.micro"
 }
 
 variable "rds_replica_instance_class" {
   type    = string
-  default = "db.r6g.large"
+  default = "db.t3.micro"
 }
 
 variable "ses_from_address" {
   type    = string
-  default = "noreply@welovedassouki.store"
+  default = "noreply@www.welovedassouki.store"
 }
 
 variable "lambda_zip_path" {
