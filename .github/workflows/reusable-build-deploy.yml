@@ -39,9 +39,24 @@ on:
         required: false
         type: string
         default: "shopcloud"
+      deploy:
+        description: "Whether to deploy to EKS after a successful build+push."
+        required: false
+        type: boolean
+        default: false
+      eks_cluster_name:
+        description: "EKS cluster name (e.g. shopcloud-dev-eks). Required when deploy is true."
+        required: false
+        type: string
+        default: ""
+      k8s_namespace:
+        description: "Kubernetes namespace to deploy into."
+        required: false
+        type: string
+        default: "app"
     secrets:
       aws_role_arn:
-        description: "OIDC role to assume for ECR push (set per environment)."
+        description: "OIDC role to assume for ECR push and EKS deploy (set per environment)."
         required: false
 
 permissions:
@@ -130,5 +145,54 @@ jobs:
           repo="${aws_account}.dkr.ecr.${AWS_REGION}.amazonaws.com/${base}-${{ inputs.service }}"
           docker tag "${base}-${{ inputs.service }}:${tag}" "${repo}:${tag}"
           docker push "${repo}:${tag}"
+
+  deploy:
+    if: >-
+      inputs.deploy &&
+      inputs.eks_cluster_name != '' &&
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main'
+    needs: [build]
+    name: Deploy ${{ inputs.service }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.aws_role_arn }}
+      AWS_REGION: ${{ inputs.aws_region }}
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --name "${{ inputs.eks_cluster_name }}" \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Deploy to EKS
+        run: |
+          set -euxo pipefail
+          tag="${GITHUB_SHA::12}"
+          aws_account="$(aws sts get-caller-identity --query Account --output text)"
+          image="${aws_account}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ inputs.ecr_repository_base }}-${{ inputs.service }}:${tag}"
+
+          kubectl set image deployment/${{ inputs.service }} \
+            ${{ inputs.service }}="${image}" \
+            -n "${{ inputs.k8s_namespace }}"
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/${{ inputs.service }} \
+            -n "${{ inputs.k8s_namespace }}" \
+            --timeout=300s
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "::warning::Deployment failed — rolling back ${{ inputs.service }}"
+          kubectl rollout undo deployment/${{ inputs.service }} \
+            -n "${{ inputs.k8s_namespace }}"
 
 

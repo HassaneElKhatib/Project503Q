@@ -24,5 +24,8 @@ jobs:
     with:
       service: checkout
       service_path: shopcloud/services/checkout
+      deploy: true
+      eks_cluster_name: shopcloud-dev-eks
+      k8s_namespace: app-dev
     secrets:
       aws_role_arn: ${{ secrets.AWS_OIDC_ROLE_ARN_DEV }}
