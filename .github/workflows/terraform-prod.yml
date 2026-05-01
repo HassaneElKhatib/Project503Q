@@ -53,6 +53,37 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME_PROD }}
           aws-region: ${{ env.AWS_REGION_PROD }}
 
+      - name: Ensure GitHub Actions EKS access
+        run: |
+          set -euo pipefail
+          policy_arn="arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+          if ! aws eks list-access-entries \
+            --region eu-central-1 \
+            --cluster-name shopcloud-prod-eks \
+            --query "accessEntries[?@=='${AWS_ROLE_TO_ASSUME_PROD}'] | [0]" \
+            --output text | grep -q "${AWS_ROLE_TO_ASSUME_PROD}"; then
+            aws eks create-access-entry \
+              --region eu-central-1 \
+              --cluster-name shopcloud-prod-eks \
+              --principal-arn "${AWS_ROLE_TO_ASSUME_PROD}" \
+              --type STANDARD
+          fi
+
+          if ! aws eks list-associated-access-policies \
+            --region eu-central-1 \
+            --cluster-name shopcloud-prod-eks \
+            --principal-arn "${AWS_ROLE_TO_ASSUME_PROD}" \
+            --query "associatedAccessPolicies[?policyArn=='${policy_arn}'].policyArn | [0]" \
+            --output text | grep -q "${policy_arn}"; then
+            aws eks associate-access-policy \
+              --region eu-central-1 \
+              --cluster-name shopcloud-prod-eks \
+              --principal-arn "${AWS_ROLE_TO_ASSUME_PROD}" \
+              --policy-arn "${policy_arn}" \
+              --access-scope type=cluster
+          fi
+
       - name: Configure kubeconfig
         run: |
           aws eks update-kubeconfig \
@@ -308,6 +339,37 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME_PROD }}
           aws-region: ${{ env.AWS_REGION_PROD }}
+
+      - name: Ensure GitHub Actions EKS access
+        run: |
+          set -euo pipefail
+          policy_arn="arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+          if ! aws eks list-access-entries \
+            --region eu-central-1 \
+            --cluster-name shopcloud-prod-eks \
+            --query "accessEntries[?@=='${AWS_ROLE_TO_ASSUME_PROD}'] | [0]" \
+            --output text | grep -q "${AWS_ROLE_TO_ASSUME_PROD}"; then
+            aws eks create-access-entry \
+              --region eu-central-1 \
+              --cluster-name shopcloud-prod-eks \
+              --principal-arn "${AWS_ROLE_TO_ASSUME_PROD}" \
+              --type STANDARD
+          fi
+
+          if ! aws eks list-associated-access-policies \
+            --region eu-central-1 \
+            --cluster-name shopcloud-prod-eks \
+            --principal-arn "${AWS_ROLE_TO_ASSUME_PROD}" \
+            --query "associatedAccessPolicies[?policyArn=='${policy_arn}'].policyArn | [0]" \
+            --output text | grep -q "${policy_arn}"; then
+            aws eks associate-access-policy \
+              --region eu-central-1 \
+              --cluster-name shopcloud-prod-eks \
+              --principal-arn "${AWS_ROLE_TO_ASSUME_PROD}" \
+              --policy-arn "${policy_arn}" \
+              --access-scope type=cluster
+          fi
 
       - name: Configure kubeconfig
         run: |
