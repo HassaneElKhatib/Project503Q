@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import toast from "react-hot-toast";
 import TitleHeaderDashboard from "../../components/TitleHeader";
 
@@ -10,8 +12,9 @@ export default function CategoriesAdminPage() {
 
   async function loadCategories() {
     try {
-      const res = await axios.get(import.meta.env.VITE_BACKEND_URL + "/api/categories", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      const res = await axios.get(`${publicApiOrigin()}/api/categories`, {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
       });
       setCategories(res.data.categories || []);
     } catch (error) {
@@ -31,9 +34,9 @@ export default function CategoriesAdminPage() {
     }
     try {
       await axios.post(
-        import.meta.env.VITE_BACKEND_URL + "/api/categories",
+        `${publicApiOrigin()}/api/categories`,
         { name: newName.trim() },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        { headers: optionalBearerHeaders(), withCredentials: true }
       );
       toast.success("Category created");
       setNewName("");
@@ -48,9 +51,9 @@ export default function CategoriesAdminPage() {
     if (!editing.id || !editing.name.trim()) return;
     try {
       await axios.put(
-        import.meta.env.VITE_BACKEND_URL + `/api/categories/${editing.id}`,
+        `${publicApiOrigin()}/api/categories/${editing.id}`,
         { name: editing.name.trim() },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        { headers: optionalBearerHeaders(), withCredentials: true }
       );
       toast.success("Category updated");
       setEditing({ id: "", name: "" });
@@ -63,8 +66,9 @@ export default function CategoriesAdminPage() {
 
   async function disableCategory(id) {
     try {
-      await axios.delete(import.meta.env.VITE_BACKEND_URL + `/api/categories/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      await axios.delete(`${publicApiOrigin()}/api/categories/${id}`, {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
       });
       toast.success("Category disabled");
       loadCategories();

@@ -1,3 +1,9 @@
+# The "app" namespace holds all 5 microservices.
+# Each cluster (dev cluster, prod cluster) has its own copy.
+#
+# Pod Security Standards = restricted: enforces non-root, no privileged,
+# no host networking, drops capabilities. Anything that fails admission
+# is rejected at apply time.
 apiVersion: v1
 kind: Namespace
 metadata:

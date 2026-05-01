@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import Loader from "../../components/loader";
 import ProduactCard from "../../components/productCard";
 
@@ -26,7 +27,7 @@ export default function ProductsPage() {
   useEffect(
     () => {
       if(isLoading){
-        axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products").then(
+        axios.get(`${publicApiOrigin()}/api/products`).then(
           (res)=> {
             const rawProducts = res.data?.products ?? res.data?.items ?? [];
             const normalizedProducts = Array.isArray(rawProducts)

@@ -8,6 +8,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: api-gateway
+  # Gateway uses shared Postgres + Cognito — safe to scale horizontally.
   minReplicas: 1
   maxReplicas: 4
   metrics:

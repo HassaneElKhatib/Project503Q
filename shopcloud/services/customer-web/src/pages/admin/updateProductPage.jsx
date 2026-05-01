@@ -1,4 +1,6 @@
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -28,8 +30,9 @@ export default function UpdateProductPage() {
   const [isLoading, setIsLoading] = useState(false);
   useEffect(() => {
     axios
-      .get(import.meta.env.VITE_BACKEND_URL + "/api/categories", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      .get(`${publicApiOrigin()}/api/categories`, {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
       })
       .then((res) => setCategories(res.data.categories || []))
       .catch(() => setCategories([]));
@@ -39,13 +42,6 @@ export default function UpdateProductPage() {
     setIsLoading(true);
     
     try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
       let imageUrls = product?.images || [];
 
       if (images.length > 0) {
@@ -66,12 +62,8 @@ export default function UpdateProductPage() {
         category,
       };
 
-      await axios.put(import.meta.env.VITE_BACKEND_URL+"/api/products/"+productId, productData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      await axios.put(`${publicApiOrigin()}/api/products/`+productId, productData,
+        { headers: optionalBearerHeaders(), withCredentials: true },
       );
 
       toast.success("Product updated successfully!");

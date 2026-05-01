@@ -1,3 +1,4 @@
+# CloudFront origin uses HTTP to this ALB (port 80); do not enable ssl-redirect on :80.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,18 +8,41 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:712044128773:certificate/933f1331-66ff-492f-80d1-2f4f9a62c2a0
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
     alb.ingress.kubernetes.io/group.name: shopcloud-public
+    alb.ingress.kubernetes.io/actions.block-admin: >
+      {"type":"fixed-response","fixedResponseConfig":{"contentType":"text/plain","statusCode":"403","messageBody":"Forbidden."}}
+    # alb.ingress.kubernetes.io/wafv2-acl-arn: PLACEHOLDER_ALB_WAF_ACL_ARN
 spec:
   ingressClassName: alb
   rules:
     - host: www.welovedassouki.store
       http:
         paths:
+          - path: /auth/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: block-admin
+                port:
+                  name: use-annotation
+          - path: /api/users/me/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: block-admin
+                port:
+                  name: use-annotation
+          - path: /admin
+            pathType: Prefix
+            backend:
+              service:
+                name: block-admin
+                port:
+                  name: use-annotation
           - path: /auth
             pathType: Prefix
             backend:

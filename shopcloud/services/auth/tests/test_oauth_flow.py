@@ -1,9 +1,3 @@
-"""End-to-end tests for the OAuth flow.
-
-We use respx to intercept outbound calls to Cognito's token endpoint so we
-can test the full /auth/login -> /auth/callback -> /me round trip without
-hitting AWS.
-"""
 from urllib.parse import parse_qs, urlparse
 
 
@@ -148,9 +142,10 @@ async def test_callback_full_happy_path(client, mint_token):
     # Should redirect to / (the default next_url)
     assert callback.headers["location"] == "/"
 
-    # Should have set both access and refresh cookies
+    # Should have set access/id/refresh cookies
     cookies_set = callback.headers.get_list("set-cookie")
     assert any("sc_access=" in c for c in cookies_set)
+    assert any("sc_id=" in c for c in cookies_set)
     assert any("sc_refresh=" in c for c in cookies_set)
     # And cleared the state cookie
     assert any("sc_state=" in c and "Max-Age=0" in c for c in cookies_set)
@@ -205,6 +200,7 @@ async def test_logout_redirects_to_cognito_and_clears_cookies(client):
     cookies_set = response.headers.get_list("set-cookie")
     # Both cookies should be cleared
     assert any("sc_access=" in c and "Max-Age=0" in c for c in cookies_set)
+    assert any("sc_id=" in c and "Max-Age=0" in c for c in cookies_set)
     assert any("sc_refresh=" in c and "Max-Age=0" in c for c in cookies_set)
 
 

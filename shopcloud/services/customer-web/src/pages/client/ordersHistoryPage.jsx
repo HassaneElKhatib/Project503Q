@@ -2,6 +2,8 @@ import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 import { RiArrowDropDownLine } from "react-icons/ri";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import { useNavigate } from "react-router-dom";
 import Loader from "../../components/loader";
 import { TbTruckDelivery } from "react-icons/tb";
@@ -47,21 +49,13 @@ export default function OrdersHistoryPage() {
   const [returnReasonByOrder, setReturnReasonByOrder] = useState({});
 
 
-  const token = localStorage.getItem("token");
-
   useEffect(() => {
 
-    if(!token){
-      navigate("/login");
-    }
-
     if(isLoading){
-      axios.get(import.meta.env.VITE_BACKEND_URL + "/api/orders/history/"+page+ "/"+ limit, 
+      axios.get(`${publicApiOrigin()}/api/orders/history/${page}/${limit}`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      }
-
+      headers: optionalBearerHeaders(),
+      withCredentials: true,
     }).then((res) => {
       setOrders(res.data.orders || []);
       setTotalPages(Math.max(1, Math.ceil((res.data.total || 0) / (res.data.limit || limit))));
@@ -75,6 +69,9 @@ export default function OrdersHistoryPage() {
     }).catch((err) => {
       console.error(err);
       setIsLoading(false);
+      if (err.response?.status === 401) {
+        navigate("/login");
+      }
     });
 
     }
@@ -85,15 +82,14 @@ export default function OrdersHistoryPage() {
     try{
       console.log("selectedItem:", selectedItem);
 
-      await axios.post(import.meta.env.VITE_BACKEND_URL + "/api/reviews", {
+      await axios.post(`${publicApiOrigin()}/api/reviews`, {
         productId: selectedItem.productId,
         rating: rating,
         comment: comment,
 
       },{
-          headers: {
-                Authorization: `Bearer ${token}`,
-            } 
+          headers: optionalBearerHeaders(),
+          withCredentials: true,
       }).then((res) => {
         console.log("Review submitted successfully:", res.data);
         toast.success("Review submitted successfully!");
@@ -121,12 +117,11 @@ export default function OrdersHistoryPage() {
       }
 
       console.log("Cancelling order:", orderId, "Reason:", reason);
-      await axios.put(import.meta.env.VITE_BACKEND_URL + `/api/orders/${orderId}`,
+      await axios.put(`${publicApiOrigin()}/api/orders/${orderId}`,
         { status: "cancelled" },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: optionalBearerHeaders(),
+          withCredentials: true,
         }
       );
 
@@ -145,7 +140,6 @@ export default function OrdersHistoryPage() {
   };          
 
   const handleRequestReturn = async (orderId) => {
-    const token = localStorage.getItem("token");
     const reason = (returnReasonByOrder[orderId] || "").trim();
     if (!reason) {
       toast.error("Please provide a reason for return request");
@@ -153,12 +147,11 @@ export default function OrdersHistoryPage() {
     }
     try {
       await axios.post(
-        import.meta.env.VITE_BACKEND_URL + `/api/orders/${orderId}/returns`,
+        `${publicApiOrigin()}/api/orders/${orderId}/returns`,
         { reason },
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: optionalBearerHeaders(),
+          withCredentials: true,
         }
       );
       toast.success("Return request submitted");
@@ -170,12 +163,10 @@ export default function OrdersHistoryPage() {
   };
 
   const handleGetInvoice = async (orderId) => {
-    const token = localStorage.getItem("token");
     try {
-      const res = await axios.get(import.meta.env.VITE_BACKEND_URL + `/api/orders/${orderId}/invoice`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await axios.get(`${publicApiOrigin()}/api/orders/${orderId}/invoice`, {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
       });
       toast.success(`Invoice ready: ${res.data?.invoice?.invoiceId || "N/A"}`);
     } catch (error) {

@@ -7,27 +7,37 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: PLACEHOLDER_ADMIN_ALB_CERT_ARN
-    alb.ingress.kubernetes.io/healthcheck-path: /health/live
+    alb.ingress.kubernetes.io/subnets: subnet-0e3a399645d66db95,subnet-0a9ee9478adf9adfe
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:712044128773:certificate/5a71e921-9925-486c-9114-cb4c4fc1f6e9
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/group.name: shopcloud-admin
-    alb.ingress.kubernetes.io/inbound-cidrs: PLACEHOLDER_ADMIN_INGRESS_CIDR
+    alb.ingress.kubernetes.io/inbound-cidrs: 10.30.0.0/16,10.222.0.0/22
 spec:
+  ingressClassName: alb
   rules:
-    - host: PLACEHOLDER_ADMIN_HOST   # e.g. admin.dev.internal.shopcloud.example
+    - host: priv-admin.www.welovedassouki.store
       http:
         paths:
-          - path: /api/admin
-            pathType: Prefix
-            backend:
-              service:
-                name: admin
-                port:
-                  number: 80
-          - path: /api/me
+          - path: /auth/admin
             pathType: Prefix
             backend:
               service:
                 name: auth
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-web
                 port:
                   number: 80

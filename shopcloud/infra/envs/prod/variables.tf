@@ -1,3 +1,6 @@
+############################################
+# Top-level identity / region
+############################################
 variable "environment" {
   type    = string
   default = "prod"
@@ -19,6 +22,9 @@ variable "replica_aws_region" {
   default     = "eu-west-1"
 }
 
+############################################
+# Network (Person A)
+############################################
 variable "vpc_cidr" {
   type    = string
   default = "10.30.0.0/16"
@@ -45,6 +51,9 @@ variable "nat_gateway_count" {
   default     = 2
 }
 
+############################################
+# ECR (Person A)
+############################################
 variable "ecr_repositories" {
   type = list(string)
   default = [
@@ -58,9 +67,79 @@ variable "ecr_repositories" {
   ]
 }
 
+############################################
+# Edge / DNS (Person A)
+############################################
 variable "enable_edge" {
   type    = bool
   default = true
+}
+
+variable "enable_client_vpn" {
+  description = "Enable AWS Client VPN endpoint."
+  type        = bool
+  default     = false
+}
+
+variable "client_vpn_server_certificate_arn" {
+  description = "ACM certificate ARN used by the Client VPN endpoint."
+  type        = string
+  default     = null
+}
+
+variable "client_vpn_client_root_certificate_chain_arn" {
+  description = "ACM certificate chain ARN used for client certificate authentication."
+  type        = string
+  default     = null
+}
+
+variable "client_vpn_client_cidr" {
+  description = "CIDR assigned to VPN clients."
+  type        = string
+  default     = "10.222.0.0/22"
+}
+
+variable "client_vpn_split_tunnel" {
+  description = "If true, only VPC routes go through the VPN."
+  type        = bool
+  default     = true
+}
+
+variable "client_vpn_saml_provider_arn" {
+  description = "Optional IAM SAML provider ARN for federated auth (MFA-capable)."
+  type        = string
+  default     = null
+}
+
+variable "client_vpn_self_service_saml_provider_arn" {
+  description = "Optional IAM SAML provider ARN for Client VPN self-service portal."
+  type        = string
+  default     = null
+}
+
+variable "client_vpn_enable_saml_federation" {
+  description = "Add SAML IdP authentication alongside client certificates. MFA is enforced by your IdP during SAML sign-in (Okta/Azure AD/IAM Identity Center)."
+  type        = bool
+  default     = false
+}
+
+variable "client_vpn_saml_metadata_document" {
+  description = "Optional SAML metadata XML for VPN federation."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "enable_private_admin_access" {
+  description = "Private Route53 record + ACM for internal admin ALB."
+  type        = bool
+  default     = true
+}
+
+variable "admin_private_dns_record_label" {
+  description = "Hostname label under var.domain_name (e.g. priv-admin)."
+  type        = string
+  default     = "priv-admin"
 }
 
 variable "domain_name" {
@@ -73,6 +152,9 @@ variable "origin_domain_name" {
   default = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
 }
 
+############################################
+# EKS (Person B)
+############################################
 variable "enable_eks" {
   type    = bool
   default = true
@@ -114,6 +196,9 @@ variable "enable_helm_addons" {
   default = true
 }
 
+############################################
+# Cognito (Person B)
+############################################
 variable "enable_cognito" {
   type    = bool
   default = true
@@ -154,6 +239,9 @@ variable "admin_logout_url" {
   default = "https://admin.internal.shopcloud.example.com/"
 }
 
+############################################
+# Data plane (Person C)
+############################################
 variable "enable_data" {
   type    = bool
   default = true

@@ -83,6 +83,7 @@ resource "aws_nat_gateway" "this" {
 }
 
 locals {
+  # Route each AZ to its own NAT when available; otherwise fall back to NAT[0] (typical dev).
   az_to_nat_gateway_id = {
     for idx, az in var.azs :
     az => aws_nat_gateway.this[min(idx, var.nat_gateway_count - 1)].id

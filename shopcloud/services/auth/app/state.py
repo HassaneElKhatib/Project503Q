@@ -1,12 +1,3 @@
-"""Signed OAuth state tokens.
-
-The OAuth `state` parameter is round-tripped from /auth/login through Cognito
-back to /auth/callback. To prevent CSRF and to verify it really originated
-from us, we sign it with HMAC-SHA256 and include a timestamp.
-
-Format: base64url(payload).base64url(signature)
-Payload: nonce.timestamp.next_url
-"""
 import base64
 import hashlib
 import hmac
@@ -16,7 +7,7 @@ from urllib.parse import quote, unquote
 
 
 class StateError(Exception):
-    """Raised when an inbound state token fails any verification step."""
+    pass
 
 
 class StateSigner:

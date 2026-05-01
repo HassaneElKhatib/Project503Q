@@ -10,7 +10,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, MetaData, String, Text, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -19,6 +19,13 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from .settings import settings
+
+
+def _gateway_schema() -> str | None:
+    return "gateway" if "postgresql" in settings.gateway_db_url.lower() else None
+
+
+_GATEWAY_META = MetaData(schema=_gateway_schema())
 
 
 def _now() -> datetime:
@@ -30,7 +37,7 @@ def _uuid() -> str:
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = _GATEWAY_META
 
 
 class User(Base):
@@ -143,6 +150,9 @@ SessionLocal = async_sessionmaker(_engine, expire_on_commit=False, class_=AsyncS
 
 async def init_db() -> None:
     async with _engine.begin() as conn:
+        sch = _gateway_schema()
+        if sch:
+            await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{sch}"'))
         await conn.run_sync(Base.metadata.create_all)
 
 

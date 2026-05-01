@@ -7,6 +7,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { MdPerson, MdLocationOn, MdPhone } from "react-icons/md";
 import toast from "react-hot-toast";
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 
 const FALLBACK_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%25' height='100%25' fill='%23f3f4f6'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='24'>No image</text></svg>";
@@ -29,40 +31,28 @@ export default function CheckoutPage(){
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [isPaying, setIsPaying] = useState(false);
 
-  useEffect(
-    () => {
-      const token = localStorage.getItem("token");
-      if(!token){
+  useEffect(() => {
+    axios
+      .get(`${publicApiOrigin()}/api/users/me/`, {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
+      })
+      .then((res) => {
+        const userPayload = res.data?.user ?? res.data ?? {};
+        setUser(userPayload);
+
+        const derivedName =
+          userPayload.name ||
+          [userPayload.firstName, userPayload.lastName].filter(Boolean).join(" ") ||
+          "";
+        setName(derivedName);
+      })
+      .catch((err) => {
+        console.error(err);
         toast.error("Please login before checkout");
         navigate("/login");
-
-      }else{
-        axios.get(import.meta.env.VITE_BACKEND_URL+"/api/users/me/",
-        {
-          headers: {
-              Authorization: `Bearer ${token}`,
-          }
-
-        }).then(
-          (res) => {
-            const userPayload = res.data?.user ?? res.data ?? {};
-            setUser(userPayload);
-
-            const derivedName =
-              userPayload.name ||
-              [userPayload.firstName, userPayload.lastName].filter(Boolean).join(" ") ||
-              "";
-            setName(derivedName);
-          }
-        ).catch(
-          (err) => {
-            console.error(err);
-            toast.error("Failed to fetch user details");
-            navigate("/login");
-          }
-        )
-      }
-    }, []);
+      });
+  }, []);
 
   if (!location.state?.items) {
     toast.error("Please select items to checkout");
@@ -81,13 +71,6 @@ export default function CheckoutPage(){
   }
 
   async function placeOrder() {
-    const token = localStorage.getItem("token");
-    if (token == null) {
-      toast.error("Please login to place an order");
-      navigate("/login");
-      return;
-    }
-
     if (!address.trim() || !phone.trim()) {
       toast.error("Please fill in all required fields");
       return;
@@ -118,10 +101,9 @@ export default function CheckoutPage(){
     try{
         setIsPaying(true);
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        const response = await axios.post(import.meta.env.VITE_BACKEND_URL + "/api/orders", order, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            }
+        const response = await axios.post(`${publicApiOrigin()}/api/orders`, order, {
+            headers: optionalBearerHeaders(),
+            withCredentials: true,
         });
 
         await clearCart();

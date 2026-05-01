@@ -1,7 +1,8 @@
 """FastAPI BFF that exposes the customer-web (faybeauty) REST contract on
 top of ShopCloud services.
 
-The gateway owns its own SQLite-backed store so the React UI can exercise
+The gateway owns its own store (SQLite in local auth mode, PostgreSQL in
+production) so the React UI can exercise
 every feature locally without the AWS-native services. When the upstream
 catalog/cart/checkout/admin URLs are configured (see settings.py), the
 gateway proxies relevant reads to those services. Everything else
@@ -15,6 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import init_db
+from .security import init_gateway_verifiers
 from .routes import (
     auth_recovery,
     categories,
@@ -32,6 +34,7 @@ from .settings import settings
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    init_gateway_verifiers()
     await init_db()
     await seed_database()
     yield

@@ -1,7 +1,8 @@
 resource "aws_ecr_repository" "this" {
   for_each = toset(var.repositories)
 
-  name                 = "${var.name_prefix}-${each.value}"
+  name = "${var.name_prefix}-${each.value}"
+  # MUTABLE allows re-pushing :latest for local/CI deploys; IMMUTABLE breaks iterative testing.
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

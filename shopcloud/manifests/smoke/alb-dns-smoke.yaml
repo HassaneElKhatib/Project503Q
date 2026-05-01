@@ -1,3 +1,5 @@
+# Temporary smoke stack to provision an internet-facing ALB and expose its DNS.
+# Safe to delete after real app Ingress exists (kubectl delete -f this file).
 apiVersion: v1
 kind: Namespace
 metadata:

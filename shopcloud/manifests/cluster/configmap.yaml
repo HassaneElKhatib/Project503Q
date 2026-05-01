@@ -1,3 +1,5 @@
+# Non-secret config shared by every service.
+# Values are filled in by Terraform per cluster (dev cluster -> dev values).
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,3 +1,9 @@
+# Copy to backend.hcl after running infra/bootstrap once.
+# AWS account ID is prefilled for this workspace.
+#
+#   cd infra/bootstrap && terraform init && terraform apply
+#   cd ../envs/dev && cp backend.hcl.example backend.hcl
+#   terraform init -backend-config=backend.hcl
 
 bucket         = "shopcloud-tfstate-712044128773"
 key            = "infra/envs/dev/terraform.tfstate"

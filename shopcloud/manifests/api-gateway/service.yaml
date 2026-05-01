@@ -20,3 +20,5 @@ kind: ServiceAccount
 metadata:
   name: api-gateway
   namespace: app
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::712044128773:role/shopcloud-prod-eks-api-gateway-irsa

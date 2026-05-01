@@ -11,6 +11,7 @@ locals {
     var.tags
   )
 
+  # Cluster mode (`default.redis7.cluster.on`) sets configuration_endpoint_address; primary may be null.
   redis_connect_host = coalesce(
     aws_elasticache_replication_group.this.primary_endpoint_address,
     aws_elasticache_replication_group.this.configuration_endpoint_address

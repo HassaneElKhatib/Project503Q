@@ -1,24 +1,33 @@
+# Copy to terraform.tfvars (gitignored). Fill the empty values below.
 
 environment = "dev"
 aws_region  = "eu-central-1"
 
+# --- Network / Edge (Person A) ---
 enable_edge        = false
 domain_name        = "dev.shopcloud.example.com"
 origin_domain_name = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
 
+# --- EKS (Person B) ---
 enable_eks         = true
 enable_helm_addons = true
 
+# --- Cognito (Person B) ---
 enable_cognito         = true
 cookie_domain          = ".dev.shopcloud.example.com"
 customer_domain_prefix = "shopcloud-dev-customer"
 admin_domain_prefix    = "shopcloud-dev-admin"
 
+# --- Data plane (Person C) ---
+# enable_data requires kms_key_arn. The pre-created eu-west-1 key can be
+# reused for the cross-region replica; wire its ARN here once you create
+# a primary-region (eu-central-1) CMK.
 enable_data               = false
 kms_key_arn               = ""
 rds_backup_retention_days = 1
 ses_from_address          = "noreply@dev.shopcloud.example.com"
 
+# Replica is a no-op in dev when enable_data=false.
 replica_aws_region              = "eu-west-1"
 replica_vpc_id                  = ""
 replica_private_data_subnet_ids = []

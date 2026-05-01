@@ -4,10 +4,22 @@ const FALLBACK_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'><rect width='100%25' height='100%25' fill='%23f3f4f6'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-family='Arial' font-size='24'>No image</text></svg>";
 
 function resolveImageSrc(image) {
-  if (!image || image.startsWith("http://") || image.startsWith("https://")) {
+  if (!image) {
     return FALLBACK_IMAGE;
   }
+  if (image.startsWith("http://") || image.startsWith("https://") || image.startsWith("data:image/")) {
+    return image;
+  }
   return image;
+}
+
+function formatUSD(value) {
+  return Number(value || 0).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function ProductCard(props) {
@@ -47,30 +59,32 @@ export default function ProductCard(props) {
         </div>
 
         {/* Price Section */}
-        <div className="mt-2">
+        <div className="mt-2 flex items-center justify-between">
           {product.labelledPrice > product.price ? (
             <p className="text-base font-semibold">
               <span className="line-through mr-2 text-gray-400 text-sm">
-                $ {product.labelledPrice.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formatUSD(product.labelledPrice)}
               </span>
               <span className="text-accent">
-                $ {product.price.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formatUSD(product.price)}
               </span>
             </p>
           ) : (
             <span className="text-green-600 font-semibold">
-              {product.price.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {formatUSD(product.price)}
             </span>
           )}
+          <span
+            className={`text-xs font-semibold px-2 py-1 rounded-full ${
+              Number(product.stock || 0) > 0
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-rose-50 text-rose-700"
+            }`}
+          >
+            {Number(product.stock || 0) > 0
+              ? `${Number(product.stock || 0)} in stock`
+              : "Out of stock"}
+          </span>
         </div>
       </div>
     </Link>

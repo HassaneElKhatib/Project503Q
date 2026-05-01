@@ -10,6 +10,11 @@ locals {
   )
 }
 
+# This module stays intentionally minimal because the producer modules
+# (rds, redis, sqs-invoice) already create the required secrets.
+#
+# It provides a stable index secret so downstream modules/pipelines can
+# discover all shared secret ARNs from one path.
 resource "aws_secretsmanager_secret" "index" {
   name                    = "/${var.project_name}/${var.env}/shared/index"
   kms_key_id              = var.kms_key_arn

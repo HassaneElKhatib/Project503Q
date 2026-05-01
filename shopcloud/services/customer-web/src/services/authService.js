@@ -7,12 +7,21 @@ export async function handleLogin(email, password) {
   try {
     const response = await loginUser({ email, password });
     if (response.data?.mfaRequired) {
-      toast.success("OTP sent to your email");
+      const emailSent = Boolean(response.data.emailSent);
+      if (emailSent) {
+        toast.success("OTP sent to your email");
+      } else {
+        toast(
+          "Email is not configured or sending failed; use the verification code shown on screen.",
+          { icon: "⚠️" },
+        );
+      }
       return {
         mfaRequired: true,
         mfaToken: response.data.mfaToken,
         email: response.data.email,
         debugOtp: response.data.debugOtp,
+        emailSent,
       };
     }
     return null;
@@ -30,7 +39,7 @@ export async function handleVerifyOtp(mfaToken, code) {
     const { token, role } = response.data;
     localStorage.setItem("token", token);
     if (role === "user") {
-      await mergeCartOnLogin(token);
+      await mergeCartOnLogin();
     }
     toast.success("Login successful!");
     return role;
@@ -52,7 +61,7 @@ export async function handleGoodleLogin(googleToken) {
 
     // Cart merge only for users
     if (role === "user") {
-      await mergeCartOnLogin(token);
+      await mergeCartOnLogin();
     }
 
     toast.success("Login successful!");

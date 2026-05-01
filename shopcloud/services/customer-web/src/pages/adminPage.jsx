@@ -32,15 +32,14 @@ export default function AdminPage() {
   useEffect(() => {
     const fetchAdminData = async () => {
       if (!isLoading) return;
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Please login as admin");
-        navigate("/admin/login");
-        return;
-      }
       try {
-        const response = await getUserById();
+        const response = await getUserById({ admin: true });
         console.log(response);
+        if (!response) {
+          toast.error("Please login as admin");
+          navigate("/admin/login");
+          return;
+        }
         setAdmin(response);
 
         if (response.role !== "admin") {

@@ -226,9 +226,15 @@ async def create_order(
     payload["invoice"] = _invoice_payload(order, claims, email_queued=False)
     payload["confirmation"] = {"message": "Order placed successfully", "orderId": order.id}
 
+    recipient_email = (claims.get("email") or "").strip()
+    if not recipient_email:
+        user_row = await session.execute(select(User).where(User.id == claims["sub"]))
+        user = user_row.scalar_one_or_none()
+        recipient_email = (user.email if user else "") or ""
+
     try:
         payload["invoice"]["emailQueued"] = send_invoice_email(
-            to_email=claims.get("email", ""),
+            to_email=recipient_email,
             customer_name=(payload.get("address", {}) or {}).get("name", ""),
             order=payload,
             invoice=payload["invoice"],

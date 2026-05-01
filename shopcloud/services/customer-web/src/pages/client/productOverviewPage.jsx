@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
 import Loader from "../../components/loader";
@@ -41,7 +42,7 @@ export default function ProductOverviewPage() {
     () => {
 
       if(status == "loading") {
-        axios.get(import.meta.env.VITE_BACKEND_URL+`/api/products/${productId}`,
+        axios.get(`${publicApiOrigin()}/api/products/${productId}`,
         ).then(
           (res) => {
             const rawProduct = res.data?.product ?? res.data;
@@ -68,7 +69,7 @@ export default function ProductOverviewPage() {
 
   useEffect(
     () => {
-      axios.get(import.meta.env.VITE_BACKEND_URL+`/api/reviews/product/${productId}`,
+      axios.get(`${publicApiOrigin()}/api/reviews/product/${productId}`,
       ).then(
         (res) => {
           console.log(res.data.reviews);

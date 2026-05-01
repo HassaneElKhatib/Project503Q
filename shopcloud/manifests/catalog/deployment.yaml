@@ -1,3 +1,11 @@
+# Catalog deployment.
+#
+# In production, catalog reads from RDS (PRODUCTS_SOURCE=sql). The seed
+# JSON in services/catalog/data/products.json is loaded into RDS by C's
+# Alembic seed migration once.
+#
+# Catalog uses the READ endpoint of RDS - it never writes. This lets us
+# scale reads onto a read replica without affecting checkout's write path.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -62,6 +70,7 @@ spec:
                   key: aws_region
             - name: LOG_LEVEL
               value: INFO
+            # Production: read from RDS (read endpoint - we never write)
             - name: PRODUCTS_SOURCE
               value: sql
             - name: DATABASE_URL
@@ -71,6 +80,7 @@ spec:
                   key: reader_url
             - name: DB_POOL_SIZE
               value: "5"
+            # ElastiCache Redis for cache-aside on GET /products/:id
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
@@ -95,6 +105,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
+              # /health/ready hits Postgres each probe; small RDS + pool exhausts under load.
               path: /health/live
               port: http
             initialDelaySeconds: 3

@@ -21,7 +21,7 @@ _BUILTIN_PRODUCTS = [
         "name": "Velvet Lipstick — Ruby",
         "altNames": ["Lipstick", "Velvet Ruby"],
         "description": "A long-wear matte lipstick in a deep ruby tone.",
-        "images": [],
+        "images": ["https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=900&q=80"],
         "price": 19.99,
         "lastPrice": 24.99,
         "stock": 120,
@@ -31,7 +31,7 @@ _BUILTIN_PRODUCTS = [
         "name": "Hydration Serum 30ml",
         "altNames": ["Serum", "Hyaluronic"],
         "description": "Hyaluronic acid serum for plump, hydrated skin.",
-        "images": [],
+        "images": ["https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=900&q=80"],
         "price": 32.0,
         "lastPrice": 38.0,
         "stock": 85,
@@ -41,7 +41,7 @@ _BUILTIN_PRODUCTS = [
         "name": "Foundation Stick — Beige",
         "altNames": ["Foundation"],
         "description": "Buildable, blendable medium coverage stick foundation.",
-        "images": [],
+        "images": ["https://images.unsplash.com/photo-1631214540242-5d6c4d2d72f8?auto=format&fit=crop&w=900&q=80"],
         "price": 27.5,
         "lastPrice": 30.0,
         "stock": 60,
@@ -51,7 +51,7 @@ _BUILTIN_PRODUCTS = [
         "name": "Volume Mascara",
         "altNames": ["Mascara"],
         "description": "Builds volume without clumps. Smudge-resistant formula.",
-        "images": [],
+        "images": ["https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=900&q=80"],
         "price": 15.99,
         "lastPrice": 18.99,
         "stock": 200,
@@ -61,7 +61,7 @@ _BUILTIN_PRODUCTS = [
         "name": "Rose Eau de Parfum 50ml",
         "altNames": ["Perfume", "Rose"],
         "description": "Floral fragrance with notes of damask rose, jasmine and vanilla.",
-        "images": [],
+        "images": ["https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=900&q=80"],
         "price": 64.0,
         "lastPrice": 72.0,
         "stock": 40,
@@ -71,7 +71,7 @@ _BUILTIN_PRODUCTS = [
         "name": "Brow Pencil — Soft Brown",
         "altNames": ["Brow", "Eyebrow Pencil"],
         "description": "Twist-up brow pencil with built-in spoolie brush.",
-        "images": [],
+        "images": ["https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=900&q=80"],
         "price": 12.5,
         "lastPrice": 14.0,
         "stock": 150,
@@ -81,20 +81,21 @@ _BUILTIN_PRODUCTS = [
 
 
 async def seed_database() -> None:
-    """Idempotent: ensures the seed admin always exists, products inserted once."""
+    """Idempotent: seed admin only in local-auth mode; products inserted once."""
     async with SessionLocal() as session:
-        admin_row = await session.execute(
-            select(User).where(User.email == settings.seed_admin_email)
-        )
-        if admin_row.scalar_one_or_none() is None:
-            session.add(
-                User(
-                    email=settings.seed_admin_email,
-                    name=settings.seed_admin_name,
-                    password_hash=hash_password(settings.seed_admin_password),
-                    role="admin",
-                )
+        if settings.use_local_gateway_auth:
+            admin_row = await session.execute(
+                select(User).where(User.email == settings.seed_admin_email)
             )
+            if admin_row.scalar_one_or_none() is None:
+                session.add(
+                    User(
+                        email=settings.seed_admin_email,
+                        name=settings.seed_admin_name,
+                        password_hash=hash_password(settings.seed_admin_password),
+                        role="admin",
+                    )
+                )
 
         existing_product = await session.execute(select(Product).limit(1))
         if existing_product.scalar_one_or_none() is None:
@@ -151,7 +152,11 @@ def _normalise_catalog_payload(rows: list[dict]) -> list[dict]:
                 "name": row.get("name", "Unnamed product"),
                 "altNames": row.get("altNames", []),
                 "description": row.get("description", ""),
-                "images": [],
+                "images": (
+                    row.get("images")
+                    if isinstance(row.get("images"), list)
+                    else ([row.get("image_url")] if row.get("image_url") else [])
+                ),
                 "price": price,
                 "lastPrice": price,
                 "stock": int(row.get("stock", row.get("available", 0)) or 0),

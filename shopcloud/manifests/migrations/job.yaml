@@ -1,3 +1,9 @@
+# DB migration Job (apply manually after images exist; not part of default kustomize apply).
+#
+#   kubectl delete job db-migrate -n app --ignore-not-found
+#   kubectl apply -f manifests/migrations/job.yaml
+#   kubectl wait --for=condition=complete job/db-migrate -n app --timeout=5m
+#
 apiVersion: batch/v1
 kind: Job
 metadata:

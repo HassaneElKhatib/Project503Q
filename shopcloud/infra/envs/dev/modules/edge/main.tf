@@ -1,3 +1,5 @@
+# Route53 hosted zone uses the default (regional) AWS provider.
+# ACM certs for CloudFront and WAF in CLOUDFRONT scope must use us-east-1.
 
 resource "aws_route53_zone" "this" {
   name = var.domain_name

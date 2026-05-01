@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { FaTrashCan } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import toast from "react-hot-toast";
 import { FaRegEdit } from "react-icons/fa";
 import Loader from "../../components/loader";
@@ -34,10 +36,9 @@ export default function ProductsAdminPage() {
   useEffect(
       () => {
       if(isLoading){
-        axios.get(import.meta.env.VITE_BACKEND_URL+"/api/products/admin",{
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          }
+        axios.get(`${publicApiOrigin()}/api/products/admin`,{
+          headers: optionalBearerHeaders(),
+          withCredentials: true,
         }
         ).then(
           (res) => {
@@ -127,11 +128,10 @@ export default function ProductsAdminPage() {
                 <button
                   className="text-white bg-emerald-600 px-2 py-1 rounded hover:bg-emerald-700"
                   onClick={async () => {
-                    const token = localStorage.getItem("token");
                     await axios.put(
-                      import.meta.env.VITE_BACKEND_URL + "/api/products/" + product.productId + "/stock",
+                      `${publicApiOrigin()}/api/products/` + product.productId + "/stock",
                       { delta: 1 },
-                      { headers: { Authorization: `Bearer ${token}` } }
+                      { headers: optionalBearerHeaders(), withCredentials: true }
                     );
                     setIsLoading(true);
                   }}
@@ -141,11 +141,10 @@ export default function ProductsAdminPage() {
                 <button
                   className="text-white bg-orange-600 px-2 py-1 rounded hover:bg-orange-700"
                   onClick={async () => {
-                    const token = localStorage.getItem("token");
                     await axios.put(
-                      import.meta.env.VITE_BACKEND_URL + "/api/products/" + product.productId + "/stock",
+                      `${publicApiOrigin()}/api/products/` + product.productId + "/stock",
                       { delta: -1 },
-                      { headers: { Authorization: `Bearer ${token}` } }
+                      { headers: optionalBearerHeaders(), withCredentials: true }
                     );
                     setIsLoading(true);
                   }}
@@ -155,17 +154,10 @@ export default function ProductsAdminPage() {
                 <button className="text-white bg-red-600 p-[10px] rounded-full hover:text-red-800"
                 onClick={
                   ()=> {
-                    const tocken = localStorage.getItem("token");
-                    if(!tocken){
-                      navigate("/login");
-                      return;
-                    }
-
-                    axios.delete(import.meta.env.VITE_BACKEND_URL+"/api/products/" + product.productId,
+                    axios.delete(`${publicApiOrigin()}/api/products/` + product.productId,
                     {
-                      headers:{
-                        Authorization: `Bearer ${tocken}`
-                      }
+                      headers: optionalBearerHeaders(),
+                      withCredentials: true,
                     }).then(
                       (res) => {
                         console.log("Product Disabled Successfully");

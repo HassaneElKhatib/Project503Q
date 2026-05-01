@@ -1,3 +1,17 @@
+# Checkout service deployment.
+#
+# IRSA role permissions for `checkout` ServiceAccount must include:
+#   - sqs:SendMessage on the invoice queue ARN ONLY (not "*")
+#   - secretsmanager:GetSecretValue on its own secrets
+# Define this in C's terraform/modules/sqs-invoice with a tight IAM policy.
+#
+# DATABASE_URL must be the WRITER endpoint (NEVER the read replica) - checkout
+# inserts orders. C's terraform/modules/rds exposes both writer_url and
+# reader_url; we pick writer_url.
+#
+# KEDA scaling: if you install KEDA, add a ScaledObject pointing at the
+# invoice queue and remove this HPA. KEDA scales on SQS depth, which is
+# better for spikes than CPU. Until KEDA is in, CPU-based HPA is fine.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -62,6 +76,7 @@ spec:
                   key: aws_region
             - name: LOG_LEVEL
               value: INFO
+            # Database - WRITER endpoint
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -71,11 +86,13 @@ spec:
               value: "5"
             - name: DB_MAX_OVERFLOW
               value: "5"
+            # Same Redis instance cart uses
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
                   name: shared-redis
                   key: url
+            # SQS invoice queue URL (set by C's Terraform)
             - name: INVOICE_QUEUE_URL
               valueFrom:
                 secretKeyRef:
@@ -83,6 +100,7 @@ spec:
                   key: url
             - name: SQS_MAX_ATTEMPTS
               value: "3"
+            # CUSTOMER Cognito pool
             - name: COGNITO_USER_POOL_ID
               valueFrom:
                 secretKeyRef:

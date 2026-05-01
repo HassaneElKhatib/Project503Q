@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import SessionLocal, User
 from ..invoice_email import send_password_reset_code_email
 from ..security import hash_password
+from ..settings import settings
 
 router = APIRouter()
 
@@ -40,6 +41,11 @@ class ResetIn(BaseModel):
 
 @router.post("/forgot-password")
 async def forgot_password(payload: ForgotIn, session: Annotated[AsyncSession, Depends(_session)]):
+    if not settings.use_local_gateway_auth:
+        raise HTTPException(
+            status.HTTP_410_GONE,
+            detail="Use Cognito hosted UI (Forgot password) instead.",
+        )
     row = await session.execute(select(User).where(User.email == payload.email))
     user = row.scalar_one_or_none()
     if not user:
@@ -61,6 +67,11 @@ async def forgot_password(payload: ForgotIn, session: Annotated[AsyncSession, De
 
 @router.post("/reset-password")
 async def reset_password(payload: ResetIn, session: Annotated[AsyncSession, Depends(_session)]):
+    if not settings.use_local_gateway_auth:
+        raise HTTPException(
+            status.HTTP_410_GONE,
+            detail="Use Cognito hosted UI (Forgot password) instead.",
+        )
     expected = _codes.get(payload.email)
     if not expected or expected != payload.code:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid reset code")

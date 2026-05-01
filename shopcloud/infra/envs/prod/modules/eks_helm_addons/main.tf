@@ -9,9 +9,9 @@ resource "helm_release" "aws_load_balancer_controller" {
   create_namespace = false
 
   values = [yamlencode({
-    clusterName = var.cluster_name
-    region      = var.aws_region
-    vpcId       = var.vpc_id
+    clusterName                 = var.cluster_name
+    region                      = var.aws_region
+    vpcId                       = var.vpc_id
     enableServiceMutatorWebhook = false
     serviceAccount = {
       create = true

@@ -1,23 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { handleRegister } from "../services/authService";
+import { useHostedCognitoAuth } from "../utils/authMode";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const authBackgroundImage =
-    "/ecommerce-auth-bg.jpg";
-  const[formData, setFormData] = useState(
-    {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      phone: "",
-      role: "user"
-    }
-  );
+  const cognitoHosted = useHostedCognitoAuth();
+  const authBackgroundImage = "/ecommerce-auth-bg.jpg";
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+    role: "user",
+  });
+
+  useEffect(() => {
+    if (!cognitoHosted) return;
+    window.location.replace(`/auth/login?next=${encodeURIComponent("/client/dashboard")}`);
+  }, [cognitoHosted]);
+
+  if (cognitoHosted) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center text-slate-600">
+        Opening hosted sign-up…
+      </div>
+    );
+  }
 
   function handleChange(e) {
     const name = e.target.name;

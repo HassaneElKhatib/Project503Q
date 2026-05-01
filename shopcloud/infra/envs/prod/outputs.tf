@@ -1,3 +1,6 @@
+############################################
+# Identity
+############################################
 output "environment" {
   value = var.environment
 }
@@ -6,6 +9,9 @@ output "aws_region" {
   value = var.aws_region
 }
 
+############################################
+# Network (Person A)
+############################################
 output "vpc_id" {
   value = module.network.vpc_id
 }
@@ -47,6 +53,40 @@ output "public_alb_acm_certificate_arn" {
   value       = var.enable_edge ? module.edge[0].alb_acm_certificate_arn : null
 }
 
+output "client_vpn_endpoint_id" {
+  value = var.enable_client_vpn ? module.vpn[0].client_vpn_endpoint_id : null
+}
+
+output "client_vpn_dns_name" {
+  value = var.enable_client_vpn ? module.vpn[0].client_vpn_dns_name : null
+}
+
+output "client_vpn_security_group_id" {
+  value = var.enable_client_vpn ? module.vpn[0].client_vpn_security_group_id : null
+}
+
+output "client_vpn_client_cidr" {
+  value = var.enable_client_vpn ? module.vpn[0].client_vpn_client_cidr : null
+}
+
+output "client_vpn_saml_provider_arn" {
+  description = "VPN SAML provider ARN when federation is enabled."
+  value       = var.enable_client_vpn ? module.vpn[0].client_vpn_saml_provider_arn : null
+}
+
+output "admin_private_fqdn" {
+  description = "Private admin hostname."
+  value       = local.use_private_admin_dns ? module.admin_private_access[0].admin_fqdn : null
+}
+
+output "admin_private_certificate_arn" {
+  description = "Regional ACM ARN for internal admin ALB HTTPS."
+  value       = local.use_private_admin_dns ? module.admin_private_access[0].admin_certificate_arn : null
+}
+
+############################################
+# EKS (Person B)
+############################################
 output "cluster_name" {
   value = var.enable_eks ? module.eks[0].cluster_name : null
 }
@@ -71,6 +111,9 @@ output "irsa_role_arns" {
   } : null
 }
 
+############################################
+# Cognito (Person B)
+############################################
 output "cognito_customer_user_pool_id" {
   value = var.enable_cognito ? module.cognito[0].customer_user_pool_id : null
 }
@@ -87,6 +130,9 @@ output "cognito_admin_app_client_id" {
   value = var.enable_cognito ? module.cognito[0].admin_app_client_id : null
 }
 
+############################################
+# Data plane (Person C)
+############################################
 output "rds_writer_endpoint" {
   value = var.enable_data ? module.rds[0].writer_endpoint : null
 }
@@ -105,4 +151,9 @@ output "invoices_bucket_name" {
 
 output "shared_index_secret_arn" {
   value = var.enable_data ? module.secrets[0].shared_index_secret_arn : null
+}
+
+output "api_gateway_smtp_secret_arn" {
+  description = "Secrets Manager ARN holding api-gateway SES SMTP settings."
+  value       = var.enable_data ? module.secrets[0].api_gateway_smtp_secret_arn : null
 }

@@ -14,6 +14,21 @@ class Settings(BaseSettings):
 
     gateway_db_url: str = "sqlite+aiosqlite:///./gateway.db"
 
+    # Local docker/tests: password + OTP + HS256 JWT. Prod: Cognito cookies / Bearer + Postgres.
+    use_local_gateway_auth: bool = False
+
+    cognito_user_pool_id: str = ""
+    cognito_app_client_id: str = ""
+    cognito_region: str = "us-east-1"
+    customer_access_cookie_name: str = "sc_access"
+    customer_id_cookie_name: str = "sc_id"
+
+    cognito_admin_user_pool_id: str = ""
+    cognito_admin_app_client_id: str = ""
+    cognito_admin_region: str = ""
+    admin_access_cookie_name: str = "sc_access_adm"
+    admin_id_cookie_name: str = "sc_id_adm"
+
     @model_validator(mode="after")
     def postgres_use_asyncpg(self) -> "Settings":
         """RDS secrets use postgresql://; SQLAlchemy async engine needs postgresql+asyncpg://."""
@@ -22,6 +37,22 @@ class Settings(BaseSettings):
             self.gateway_db_url = u.replace("postgresql://", "postgresql+asyncpg://", 1)
         elif u.startswith("postgres://"):
             self.gateway_db_url = u.replace("postgres://", "postgresql+asyncpg://", 1)
+        return self
+
+    @model_validator(mode="after")
+    def enforce_cognito_and_postgres(self) -> "Settings":
+        if self.use_local_gateway_auth:
+            return self
+        if "sqlite" in self.gateway_db_url.lower():
+            raise ValueError(
+                "Gateway DATABASE_URL must be PostgreSQL when USE_LOCAL_GATEWAY_AUTH=false "
+                "(SQLite is only allowed for local auth)."
+            )
+        if not self.cognito_user_pool_id.strip() or not self.cognito_app_client_id.strip():
+            raise ValueError(
+                "COGNITO_USER_POOL_ID and COGNITO_APP_CLIENT_ID are required when "
+                "USE_LOCAL_GATEWAY_AUTH=false."
+            )
         return self
 
     jwt_secret: str = "change-me-in-production"

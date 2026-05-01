@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import { fetchUserDetails, updateUserDetails } from "../api/userApi";
+import { fetchAdminDetails, fetchUserDetails, updateUserDetails } from "../api/userApi";
 
 function normalizeUser(user) {
   if (!user) return null;
@@ -14,9 +14,9 @@ function normalizeUser(user) {
 }
 
 // Fetch user details
-export async function getUserById() {
+export async function getUserById(options = {}) {
   try{
-    const response = await fetchUserDetails();
+    const response = options.admin ? await fetchAdminDetails() : await fetchUserDetails();
     const userPayload = response.data?.user ?? response.data ?? null;
     return normalizeUser(userPayload);
 

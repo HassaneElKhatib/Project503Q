@@ -1,3 +1,6 @@
+############################################
+# Top-level identity / region
+############################################
 variable "environment" {
   description = "Deployment environment name."
   type        = string
@@ -22,6 +25,9 @@ variable "replica_aws_region" {
   default     = "eu-west-1"
 }
 
+############################################
+# Network (Person A)
+############################################
 variable "vpc_cidr" {
   description = "Must not overlap other VPCs in this account."
   type        = string
@@ -49,6 +55,9 @@ variable "nat_gateway_count" {
   default     = 1
 }
 
+############################################
+# ECR (Person A)
+############################################
 variable "ecr_repositories" {
   type = list(string)
   default = [
@@ -62,6 +71,9 @@ variable "ecr_repositories" {
   ]
 }
 
+############################################
+# Edge / DNS (Person A)
+############################################
 variable "enable_edge" {
   description = "Create Route53 + ACM + CloudFront + WAF (set false for VPC+ECR only)."
   type        = bool
@@ -80,6 +92,9 @@ variable "origin_domain_name" {
   default     = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
 }
 
+############################################
+# EKS (Person B)
+############################################
 variable "enable_eks" {
   description = "Stand up the EKS cluster + node groups in this env."
   type        = bool
@@ -135,6 +150,9 @@ variable "enable_cluster_autoscaler" {
   default     = true
 }
 
+############################################
+# Cognito (Person B)
+############################################
 variable "enable_cognito" {
   type    = bool
   default = true
@@ -176,6 +194,9 @@ variable "admin_logout_url" {
   default = "https://admin.dev.internal.shopcloud.example.com/"
 }
 
+############################################
+# Data plane (Person C)
+############################################
 variable "enable_data" {
   description = "Stand up RDS + Redis + SQS-invoice + Secrets."
   type        = bool
@@ -214,6 +235,10 @@ variable "lambda_zip_path" {
   default     = "../../../services/invoice-worker/dist/invoice-worker.zip"
 }
 
+# Replica region inputs are required by the rds module signature even
+# in dev where the replica is effectively unused; we point at default
+# VPC values that AWS auto-creates so a `terraform apply` doesn't
+# require humans to wire two VPCs for a dev-only run.
 variable "replica_vpc_id" {
   type    = string
   default = ""

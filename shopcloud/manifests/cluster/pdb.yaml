@@ -1,3 +1,5 @@
+# PodDisruptionBudgets keep at least 1 pod alive during voluntary disruptions
+# (node drains, cluster autoscaler scale-downs, rolling node replacements).
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

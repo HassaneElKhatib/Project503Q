@@ -1,3 +1,7 @@
+# Build all Shopcloud service images from the monorepo root and push to prod ECR as :latest.
+# Prerequisites: AWS CLI credentials (ecr:BatchCheckLayerAvailability, ecr:PutImage, ...), Docker.
+# Usage (from anywhere):  pwsh -File shopcloud/scripts/push-prod-ecr.ps1
+# Or:  cd shopcloud; ../shopcloud/scripts/push-prod-ecr.ps1   — script cd's to repo root automatically.
 
 param(
     [string]$AwsRegion = "eu-central-1",
@@ -27,6 +31,8 @@ foreach ($svc in $services) {
     $image = "$registry/${RepoPrefix}-${svc}:latest"
     Write-Host "`n=== Building $svc -> $image ===" -ForegroundColor Cyan
     if ($svc -eq "customer-web") {
+        # Dockerfile COPY paths are relative to services/customer-web (not monorepo root).
+        # Empty VITE_BACKEND_URL => SPA calls same-origin `/api` (matches public ingress /api -> api-gateway).
         docker build `
             -f "services/$svc/Dockerfile" `
             --build-arg "VITE_BACKEND_URL=" `

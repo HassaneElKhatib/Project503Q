@@ -60,8 +60,13 @@ class AuthSettings(BaseServiceSettings):
         description="Set False only for local http dev",
     )
     access_cookie_name: str = Field(default="sc_access")
+    id_cookie_name: str = Field(default="sc_id")
     refresh_cookie_name: str = Field(default="sc_refresh")
     state_cookie_name: str = Field(default="sc_state")
+    state_cookie_path: str = Field(
+        default="/auth",
+        description="Path scope for OAuth state cookie; must match callback route prefix",
+    )
 
     # CSRF protection on the OAuth state param - signed with this key
     state_signing_key: str = Field(
@@ -81,14 +86,32 @@ class AuthSettings(BaseServiceSettings):
     def jwks_url(self) -> str:
         return f"{self.issuer}/.well-known/jwks.json"
 
+    def cognito_hosted_ui_hostname(self) -> str:
+        """Return the hostname for OAuth URLs.
+
+        Secrets Manager / Terraform usually store the pool **domain prefix** only
+        (e.g. ``shopcloud-prod-customer``). The browser must be sent to
+        ``{prefix}.auth.{region}.amazoncognito.com``. If the secret already
+        contains the full hostname, it is used as-is.
+        """
+        raw = (self.cognito_domain or "").strip().rstrip("/")
+        if raw.lower().startswith("https://"):
+            raw = raw[8:]
+        elif raw.lower().startswith("http://"):
+            raw = raw[7:]
+        host = raw.split("/", 1)[0]
+        if ".amazoncognito.com" in host.lower():
+            return host
+        return f"{host}.auth.{self.cognito_region}.amazoncognito.com"
+
     @property
     def authorize_url(self) -> str:
-        return f"https://{self.cognito_domain}/oauth2/authorize"
+        return f"https://{self.cognito_hosted_ui_hostname()}/oauth2/authorize"
 
     @property
     def token_url(self) -> str:
-        return f"https://{self.cognito_domain}/oauth2/token"
+        return f"https://{self.cognito_hosted_ui_hostname()}/oauth2/token"
 
     @property
     def logout_url(self) -> str:
-        return f"https://{self.cognito_domain}/logout"
+        return f"https://{self.cognito_hosted_ui_hostname()}/logout"

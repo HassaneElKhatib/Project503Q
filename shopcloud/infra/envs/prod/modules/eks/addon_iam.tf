@@ -1,3 +1,5 @@
+# IAM roles for cluster add-on Helm charts (ALB Controller, Cluster Autoscaler, External Secrets).
+# Created when enable_helm_addons = true; paired with modules/eks_helm_addons.
 
 locals {
   alb_controller_sa_sub            = "system:serviceaccount:kube-system:aws-load-balancer-controller"

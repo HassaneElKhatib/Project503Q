@@ -1,3 +1,5 @@
+# Route53 hosted zone uses the default (regional) AWS provider.
+# ACM certs for CloudFront and WAF in CLOUDFRONT scope must use us-east-1.
 
 resource "aws_route53_zone" "this" {
   name = var.domain_name
@@ -46,6 +48,7 @@ resource "aws_acm_certificate_validation" "cloudfront" {
   }
 }
 
+# Regional ACM for the internet-facing ALB (same region as EKS). CloudFront cert is us-east-1 only.
 resource "aws_acm_certificate" "alb" {
   domain_name       = var.domain_name
   validation_method = "DNS"
@@ -170,9 +173,11 @@ resource "aws_cloudfront_distribution" "this" {
     domain_name = var.origin_domain_name
     origin_id   = "shopcloud-origin"
     custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "https-only"
+      http_port  = 80
+      https_port = 443
+      # ALB TLS cert matches www hostname, not *.elb.amazonaws.com; HTTPS origin
+      # fails CloudFront's TLS verification against the origin DNS name → 502.
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }

@@ -1,15 +1,20 @@
 import axios from "axios";
+import { publicApiBase } from "../utils/publicApiOrigin";
 
+export function optionalBearerHeaders() {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL + "/api",
+  baseURL: publicApiBase(),
+  withCredentials: true,
 });
 
-// Add token automatically
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const extra = optionalBearerHeaders();
+  if (extra.Authorization) {
+    config.headers.Authorization = extra.Authorization;
   }
   return config;
 });

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import os
 import smtplib
 from email.message import EmailMessage
 from html import escape
@@ -8,9 +10,20 @@ from fpdf import FPDF
 
 from .settings import settings
 
+logger = logging.getLogger(__name__)
+
 
 def _money(value: float) -> str:
     return f"${value:,.2f}"
+
+
+def _pdf_safe_text(value: object) -> str:
+    """Coerce text to a charset compatible with FPDF core fonts."""
+    text = str(value or "")
+    # Normalize common punctuation first for readability.
+    text = text.replace("—", "-").replace("–", "-").replace("’", "'").replace("“", '"').replace("”", '"')
+    # FPDF core fonts support latin-1; replace unsupported codepoints safely.
+    return text.encode("latin-1", errors="replace").decode("latin-1")
 
 
 def _smtp_ready() -> bool:
@@ -21,6 +34,39 @@ def _smtp_ready() -> bool:
         and settings.smtp_user
         and settings.smtp_password
     )
+
+
+def _ses_region() -> str:
+    return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "eu-central-1"
+
+
+def _send_via_ses(*, to_email: str, subject: str, text_body: str, html_body: str | None) -> bool:
+    """Send simple mail via SES API (works with EKS IRSA; no SMTP password)."""
+    if not settings.smtp_from_email:
+        return False
+    try:
+        import boto3
+        from botocore.exceptions import BotoCoreError, ClientError
+    except ImportError:
+        return False
+
+    src = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
+    body: dict = {"Text": {"Data": text_body, "Charset": "UTF-8"}}
+    if html_body:
+        body["Html"] = {"Data": html_body, "Charset": "UTF-8"}
+    try:
+        boto3.client("ses", region_name=_ses_region()).send_email(
+            Source=src,
+            Destination={"ToAddresses": [to_email]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": body,
+            },
+        )
+        return True
+    except (BotoCoreError, ClientError) as exc:
+        logger.warning("SES send failed (%s); falling back to SMTP if configured", exc)
+        return False
 
 
 def _deliver_message(msg: EmailMessage) -> bool:
@@ -39,7 +85,11 @@ def _deliver_message(msg: EmailMessage) -> bool:
 
 
 def send_email(*, to_email: str, subject: str, text_body: str, html_body: str | None = None) -> bool:
-    if not _smtp_ready() or not to_email:
+    if not to_email:
+        return False
+    if _send_via_ses(to_email=to_email, subject=subject, text_body=text_body, html_body=html_body):
+        return True
+    if not _smtp_ready():
         return False
 
     msg = EmailMessage()
@@ -60,9 +110,9 @@ def build_invoice_pdf(order: dict, invoice: dict) -> bytes:
     pdf.cell(0, 10, "The Glow Lab - Invoice", ln=True)
 
     pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 8, f"Invoice ID: {invoice.get('invoiceId', '')}", ln=True)
-    pdf.cell(0, 8, f"Order ID: {order.get('_id', '')}", ln=True)
-    pdf.cell(0, 8, f"Generated At: {invoice.get('generatedAt', '')}", ln=True)
+    pdf.cell(0, 8, _pdf_safe_text(f"Invoice ID: {invoice.get('invoiceId', '')}"), ln=True)
+    pdf.cell(0, 8, _pdf_safe_text(f"Order ID: {order.get('_id', '')}"), ln=True)
+    pdf.cell(0, 8, _pdf_safe_text(f"Generated At: {invoice.get('generatedAt', '')}"), ln=True)
     pdf.ln(4)
 
     address = order.get("address") or {}
@@ -78,18 +128,24 @@ def build_invoice_pdf(order: dict, invoice: dict) -> bytes:
         f"Phone: {address.get('phone', '')}" if address.get("phone") else "",
     ]:
         if line:
-            pdf.cell(0, 7, line, ln=True)
+            pdf.cell(0, 7, _pdf_safe_text(line), ln=True)
 
     pdf.ln(4)
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 8, "Items", ln=True)
     pdf.set_font("Helvetica", "", 11)
+    usable_width = pdf.w - pdf.l_margin - pdf.r_margin
     for item in order.get("items", []):
         name = item.get("name") or item.get("productId") or "Item"
         qty = int(item.get("quantity", 1))
         price = float(item.get("price", 0))
         line_total = qty * price
-        pdf.multi_cell(0, 7, f"- {name} x{qty}  @ {_money(price)}  = {_money(line_total)}")
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(
+            usable_width,
+            7,
+            _pdf_safe_text(f"- {name} x{qty}  @ {_money(price)}  = {_money(line_total)}"),
+        )
 
     pdf.ln(2)
     pdf.set_font("Helvetica", "B", 12)
@@ -104,7 +160,7 @@ def build_invoice_pdf(order: dict, invoice: dict) -> bytes:
 
 
 def send_invoice_email(*, to_email: str, customer_name: str, order: dict, invoice: dict) -> bool:
-    if not _smtp_ready() or not to_email:
+    if not to_email:
         return False
 
     total = float(order.get("total", 0))
@@ -145,6 +201,22 @@ def send_invoice_email(*, to_email: str, customer_name: str, order: dict, invoic
         filename=f"{invoice_id}.pdf",
     )
 
+    # Primary path in EKS: SES API with IRSA and raw MIME (supports attachments).
+    try:
+        import boto3
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        boto3.client("ses", region_name=_ses_region()).send_raw_email(
+            Source=msg["From"],
+            Destinations=[to_email],
+            RawMessage={"Data": msg.as_bytes()},
+        )
+        return True
+    except Exception as exc:
+        logger.warning("SES raw invoice send failed (%s); trying SMTP fallback", exc)
+
+    if not _smtp_ready():
+        return False
     return _deliver_message(msg)
 
 

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { FaSearch, FaCheckCircle } from 'react-icons/fa';
 import TitleHeaderDashboard from '../../components/TitleHeader';
 import axios from 'axios';
+import { optionalBearerHeaders } from '../../config/axiosConfig';
+import { publicApiOrigin } from '../../utils/publicApiOrigin';
 import toast from 'react-hot-toast';
 
 export default function UserManagementPage() {
@@ -13,11 +15,9 @@ export default function UserManagementPage() {
 
   useEffect(() => {
 
-    axios.get(import.meta.env.VITE_BACKEND_URL+"/api/users",{
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      }
-
+    axios.get(`${publicApiOrigin()}/api/users`,{
+      headers: optionalBearerHeaders(),
+      withCredentials: true,
     }).then((res) => {
       console.log(res.data.users);
       setUsers(res.data.users);
@@ -30,10 +30,9 @@ export default function UserManagementPage() {
  
 
   const handleBlockToggle = (userId) => {
-    axios.put(import.meta.env.VITE_BACKEND_URL+"/api/users/"+userId+"/block", {}, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      }
+    axios.put(`${publicApiOrigin()}/api/users/`+userId+"/block", {}, {
+      headers: optionalBearerHeaders(),
+      withCredentials: true,
     }).then(() => {
       setUsers(prevUsers => prevUsers.map(user => 
         user._id === userId ? {...user, isBlocked: !user.isBlocked} : user
@@ -49,10 +48,9 @@ export default function UserManagementPage() {
 
   const loadUserDetails = async (userId) => {
     try {
-      const res = await axios.get(import.meta.env.VITE_BACKEND_URL + "/api/users/" + userId + "/details", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
+      const res = await axios.get(`${publicApiOrigin()}/api/users/` + userId + "/details", {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
       });
       setSelectedDetails(res.data);
     } catch (err) {

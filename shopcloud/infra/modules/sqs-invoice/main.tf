@@ -164,6 +164,8 @@ resource "aws_iam_role_policy" "lambda_exec" {
   })
 }
 
+# Omit CMK: shared infra keys often lack logs.eu-central-1.amazonaws.com in policy;
+# CloudWatch encrypts log groups with an AWS-managed key by default.
 resource "aws_cloudwatch_log_group" "invoice_worker" {
   name              = "/aws/lambda/${local.name_prefix}-invoice-worker"
   retention_in_days = local.is_prod ? 30 : 7

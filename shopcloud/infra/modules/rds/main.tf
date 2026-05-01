@@ -117,6 +117,7 @@ resource "aws_security_group" "rds_replica" {
   description = "Postgres replica access for ShopCloud services"
   vpc_id      = var.replica_vpc_id
 
+  # Replica is in another region/VPC; primary-region SG IDs are invalid here — use replica-region SGs or VPC CIDR.
   dynamic "ingress" {
     for_each = length(var.replica_allowed_security_group_ids) > 0 ? [1] : []
     content {

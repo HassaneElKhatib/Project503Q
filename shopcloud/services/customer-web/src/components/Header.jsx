@@ -12,6 +12,8 @@ import { getUserById } from "../services/userService";
 import { MdSendTimeExtension } from "react-icons/md";
 import AuthSection from "./AuthSection";
 import brandLogo from "../assets/glow-lab-logo.svg";
+import { useHostedCognitoAuth } from "../utils/authMode";
+import { publicApiOrigin } from "../utils/publicApiOrigin";
 
 export default function Header() {
   const navigate = useNavigate();
@@ -19,16 +21,20 @@ export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState(null);
+  const cognitoHosted = useHostedCognitoAuth();
   const defaultImage = "https://xaezbcwztkcrkmtakkfg.supabase.co/storage/v1/object/public/skyrek-img/icon-5404125_1920.png";
-  const token = localStorage.getItem("token");
   const brandName = "ShopCloud";
   const brandSubtitle = "Everyday essentials for everyone";
 
   useEffect(() => {
-    if (!token) return;
-
     const fetchUser = async () => {
       try {
+        if (cognitoHosted) {
+          await fetch(`${publicApiOrigin()}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+          }).catch(() => null);
+        }
         const response = await getUserById();
         setUser(response);
       } catch (error) {
@@ -37,7 +43,7 @@ export default function Header() {
     };
 
     fetchUser();
-  }, [token]);
+  }, [cognitoHosted, location.pathname]);
 
   useEffect(() => {
     loadCartCount();
@@ -132,7 +138,7 @@ export default function Header() {
                 Contact Us
               </button>
 
-              {token ? (
+              {user ? (
                   <button
                     className="text-accent text-2xl flex flex-row items-center hover:text-accent-hover transition-colors"
                     onClick={() => {
@@ -206,7 +212,7 @@ export default function Header() {
         </Link>
       </div>
       <div className="absolute flex right-[16px] md:right-[20px] gap-6 md:gap-8 items-center">
-        <AuthSection token={token} user={user} defaultImage={defaultImage} />
+        <AuthSection user={user} defaultImage={defaultImage} />
 
         <Link 
           to="/cart" 

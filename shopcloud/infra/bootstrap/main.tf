@@ -1,3 +1,8 @@
+############################################
+# Terraform state backend bootstrap
+# One-time apply. Produces the S3 bucket + DynamoDB lock table that
+# every infra/envs/<env> stack uses for remote state.
+############################################
 
 provider "aws" {
   region = var.aws_region

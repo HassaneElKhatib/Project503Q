@@ -1,22 +1,18 @@
-"""Auth HTTP routes.
-
-Flow:
-    GET  /auth/login            -> 302 to Cognito hosted UI (sets state cookie)
-    GET  /auth/callback?code=&state=  -> validates state, swaps code for tokens,
-                                          sets HttpOnly cookies, redirects to SPA
-    POST /auth/refresh          -> uses refresh cookie to mint a new access token
-    GET  /me                    -> returns identity from the verified access token
-    POST /auth/logout           -> clears cookies and redirects to Cognito logout
-"""
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from app.cognito import CognitoClient, TokenSet
+from app.cognito import CognitoClient
 from app.deps import (
     get_cognito_client,
     get_settings,
     get_state_signer,
     get_verifier,
+)
+from app.oauth_cookies import (
+    clear_token_cookies,
+    delete_oauth_state_cookie,
+    http_only_cookie_kwargs,
+    set_token_cookies,
 )
 from app.settings import AuthSettings
 from app.state import StateError, StateSigner
@@ -27,42 +23,6 @@ from libs.logger import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["auth"])
-
-
-def _set_token_cookies(
-    response: Response, tokens: TokenSet, settings: AuthSettings
-) -> None:
-    """Persist the access (and refresh) tokens as HttpOnly cookies."""
-    common = {
-        "httponly": True,
-        "secure": settings.cookie_secure,
-        "samesite": "lax",
-    }
-    if settings.cookie_domain:
-        common["domain"] = settings.cookie_domain  # type: ignore[assignment]
-
-    response.set_cookie(
-        settings.access_cookie_name,
-        tokens.access_token,
-        max_age=tokens.expires_in,
-        path="/",
-        **common,
-    )
-    if tokens.refresh_token:
-        # Refresh tokens are long-lived (Cognito default 30 days). Scope to /auth.
-        response.set_cookie(
-            settings.refresh_cookie_name,
-            tokens.refresh_token,
-            max_age=30 * 24 * 60 * 60,
-            path="/auth",
-            **common,
-        )
-
-
-def _clear_token_cookies(response: Response, settings: AuthSettings) -> None:
-    response.delete_cookie(settings.access_cookie_name, path="/")
-    response.delete_cookie(settings.refresh_cookie_name, path="/auth")
-    response.delete_cookie(settings.state_cookie_name, path="/auth")
 
 
 @router.get("/auth/login")
@@ -86,10 +46,8 @@ async def login(
         settings.state_cookie_name,
         state,
         max_age=settings.state_ttl_seconds,
-        path="/auth",
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
+        path=settings.state_cookie_path,
+        **http_only_cookie_kwargs(settings),
     )
     return response
 
@@ -134,8 +92,8 @@ async def callback(
 
     # Redirect the SPA to wherever it asked to land, with cookies set
     redirect = RedirectResponse(url=next_url, status_code=status.HTTP_302_FOUND)
-    _set_token_cookies(redirect, tokens, settings)
-    redirect.delete_cookie(settings.state_cookie_name, path="/auth")
+    set_token_cookies(redirect, tokens, settings)
+    delete_oauth_state_cookie(redirect, settings)
     return redirect
 
 
@@ -157,7 +115,7 @@ async def refresh(
 
     tokens = await cognito.refresh(refresh_token)
     response = JSONResponse(content={"expires_in": tokens.expires_in})
-    _set_token_cookies(response, tokens, settings)
+    set_token_cookies(response, tokens, settings)
     return response
 
 
@@ -171,7 +129,7 @@ async def logout(
         url=cognito.build_logout_url(),
         status_code=status.HTTP_302_FOUND,
     )
-    _clear_token_cookies(response, settings)
+    clear_token_cookies(response, settings)
     return response
 
 
@@ -185,12 +143,6 @@ async def me(
     verifier: CognitoVerifier = Depends(get_verifier),
     settings: AuthSettings = Depends(get_settings),
 ) -> dict:
-    """Return the current user's identity.
-
-    Accepts the access token from EITHER:
-    - Authorization: Bearer <token> header (for service-to-service or SDKs)
-    - The HttpOnly access cookie (for the browser SPA)
-    """
     token = None
     auth_header = request.headers.get("authorization")
     if auth_header and auth_header.lower().startswith("bearer "):

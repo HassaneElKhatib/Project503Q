@@ -1,3 +1,11 @@
+# Cart service deployment.
+#
+# Cart is read-heavy and stateful via Redis. We're conservative on replicas
+# (2 baseline) but HPA can grow up to 6 under load.
+#
+# IRSA: cart's role only needs read access to its Secrets Manager entries
+# (Redis URL, Cognito IDs). Define this role in B's terraform/modules/eks
+# and write the ARN into the ServiceAccount annotation.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -64,6 +72,7 @@ spec:
                   key: aws_region
             - name: LOG_LEVEL
               value: INFO
+            # Cart talks to catalog via in-cluster DNS
             - name: CATALOG_BASE_URL
               value: http://catalog.app.svc.cluster.local
             - name: CATALOG_TIMEOUT_SECONDS
@@ -74,11 +83,13 @@ spec:
               value: "50"
             - name: MAX_QUANTITY_PER_ITEM
               value: "99"
+            # Redis URL (ElastiCache) - synced from Secrets Manager
             - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
                   name: shared-redis
                   key: url
+            # Cognito CUSTOMER pool config
             - name: COGNITO_USER_POOL_ID
               valueFrom:
                 secretKeyRef:

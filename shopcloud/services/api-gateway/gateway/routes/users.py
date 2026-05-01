@@ -19,9 +19,18 @@ from ..security import (
     require_user,
     verify_password,
 )
+from ..settings import settings
 
 router = APIRouter()
 _mfa_sessions: dict[str, dict[str, str | float]] = {}
+
+
+def _reject_public_password_auth() -> None:
+    if not settings.use_local_gateway_auth:
+        raise HTTPException(
+            status.HTTP_410_GONE,
+            detail="Password sign-in is disabled. Use Cognito hosted UI via /auth/login.",
+        )
 
 
 async def _session() -> AsyncSession:
@@ -73,6 +82,69 @@ def _serialize_user(user: User, profile: UserProfile | None = None) -> dict:
     }
 
 
+def _email_from_claims(claims: dict) -> str:
+    raw = (claims.get("email") or "").strip()
+    if raw:
+        return raw
+    return ""
+
+
+def _is_placeholder_identity(user: User) -> bool:
+    """Detect gateway-created placeholder names/emails from missing Cognito email claims."""
+    email = (user.email or "").strip().lower()
+    name = (user.name or "").strip()
+    if not email.endswith("@cognito.invalid"):
+        return False
+    if not name:
+        return True
+    if name == user.id:
+        return True
+    if name == email.split("@", 1)[0]:
+        return True
+    return False
+
+
+async def _ensure_user_from_claims(
+    session: AsyncSession, claims: dict
+) -> tuple[User, UserProfile]:
+    """Load or create the gateway User row keyed by Cognito sub (or local JWT sub)."""
+    user_id = claims["sub"]
+    email = _email_from_claims(claims)
+    role = claims.get("role") or "user"
+
+    row = await session.execute(select(User).where(User.id == user_id))
+    user = row.scalar_one_or_none()
+    if user:
+        had_placeholder_identity = _is_placeholder_identity(user)
+        # Never downgrade a real identity back to placeholder when token lacks email.
+        if email and user.email != email:
+            user.email = email
+            if had_placeholder_identity:
+                user.name = email.split("@", 1)[0] if email else user_id
+        if role == "admin" and user.role != "admin":
+            user.role = "admin"
+        profile = await _get_or_create_profile(session, user.id)
+        return user, profile
+
+    if not email:
+        email = f"{user_id}@cognito.invalid"
+    clash = await session.execute(select(User).where(User.email == email))
+    if clash.scalar_one_or_none():
+        email = f"{user_id}@cognito.invalid"
+
+    user = User(
+        id=user_id,
+        email=email,
+        name=email.split("@", 1)[0] if email else user_id,
+        password_hash="",
+        role="admin" if role == "admin" else "user",
+    )
+    session.add(user)
+    await session.flush()
+    profile = await _get_or_create_profile(session, user.id)
+    return user, profile
+
+
 async def _get_or_create_profile(session: AsyncSession, user_id: str) -> UserProfile:
     row = await session.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = row.scalar_one_or_none()
@@ -86,6 +158,7 @@ async def _get_or_create_profile(session: AsyncSession, user_id: str) -> UserPro
 
 @router.post("", status_code=201)
 async def register(payload: RegisterIn, session: Annotated[AsyncSession, Depends(_session)]):
+    _reject_public_password_auth()
     existing = await session.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, detail="email already registered")
@@ -102,6 +175,7 @@ async def register(payload: RegisterIn, session: Annotated[AsyncSession, Depends
 
 @router.post("/login")
 async def login(payload: LoginIn, session: Annotated[AsyncSession, Depends(_session)]):
+    _reject_public_password_auth()
     row = await session.execute(select(User).where(User.email == payload.email))
     user = row.scalar_one_or_none()
     if not user or not verify_password(payload.password, user.password_hash):
@@ -134,6 +208,7 @@ async def login(payload: LoginIn, session: Annotated[AsyncSession, Depends(_sess
 
 @router.post("/verify-otp")
 async def verify_otp(payload: VerifyOtpIn):
+    _reject_public_password_auth()
     session_data = _mfa_sessions.get(payload.mfaToken)
     if not session_data:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid MFA session")
@@ -173,11 +248,23 @@ async def google_login(_payload: GoogleLoginIn):
 
 @router.get("/me/")
 async def get_me(claims: Annotated[dict, Depends(require_user)], session: Annotated[AsyncSession, Depends(_session)]):
-    row = await session.execute(select(User).where(User.id == claims["sub"]))
-    user = row.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="user not found")
-    profile = await _get_or_create_profile(session, user.id)
+    user, profile = await _ensure_user_from_claims(session, claims)
+    if user.is_blocked:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="account blocked")
+    await session.commit()
+    return _serialize_user(user, profile)
+
+
+@router.get("/me/admin")
+async def get_admin_me(
+    claims: Annotated[dict, Depends(require_admin)],
+    session: Annotated[AsyncSession, Depends(_session)],
+):
+    user, profile = await _ensure_user_from_claims(session, claims)
+    if user.is_blocked:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="account blocked")
+    if user.role != "admin":
+        user.role = "admin"
     await session.commit()
     return _serialize_user(user, profile)
 
@@ -188,11 +275,7 @@ async def update_me(
     claims: Annotated[dict, Depends(require_user)],
     session: Annotated[AsyncSession, Depends(_session)],
 ):
-    row = await session.execute(select(User).where(User.id == claims["sub"]))
-    user = row.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="user not found")
-    profile = await _get_or_create_profile(session, user.id)
+    user, profile = await _ensure_user_from_claims(session, claims)
     if payload.name is not None:
         user.name = payload.name
     else:
@@ -206,6 +289,11 @@ async def update_me(
     if payload.image is not None:
         profile.image = payload.image
     if payload.password:
+        if not settings.use_local_gateway_auth:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Password updates use Cognito.",
+            )
         user.password_hash = hash_password(payload.password)
     await session.commit()
     await session.refresh(user)

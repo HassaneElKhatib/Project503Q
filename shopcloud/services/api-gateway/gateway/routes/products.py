@@ -43,7 +43,7 @@ def _row_to_dict(row: Product) -> dict[str, Any]:
     images = payload.get("images") or []
     if isinstance(images, list):
         payload["images"] = [
-            img for img in images if isinstance(img, str) and img and not img.startswith(("http://", "https://"))
+            img.strip() for img in images if isinstance(img, str) and img.strip()
         ]
     else:
         payload["images"] = []

@@ -61,6 +61,7 @@ services:
       LOG_LEVEL: info
       ALLOWED_ORIGINS: http://localhost:5173,http://localhost:4173,http://localhost:8080
       GATEWAY_DB_URL: sqlite+aiosqlite:////data/gateway.db
+      USE_LOCAL_GATEWAY_AUTH: "true"
       JWT_SECRET: local-dev-jwt-secret-change-me
       CATALOG_BASE_URL: http://catalog:8000
       CART_BASE_URL: http://cart:8000

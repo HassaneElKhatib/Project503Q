@@ -1,4 +1,6 @@
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -10,21 +12,17 @@ export default function OrdersAdminPage() {
   const [returns, setReturns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const token = localStorage.getItem("token");
-
   async function loadData() {
-    if (!token) {
-      navigate("/login");
-      return;
-    }
     try {
       setIsLoading(true);
       const [ordersRes, returnsRes] = await Promise.all([
-        axios.get(import.meta.env.VITE_BACKEND_URL + "/api/orders", {
-          headers: { Authorization: `Bearer ${token}` },
+        axios.get(`${publicApiOrigin()}/api/orders`, {
+          headers: optionalBearerHeaders(),
+          withCredentials: true,
         }),
-        axios.get(import.meta.env.VITE_BACKEND_URL + "/api/orders/returns", {
-          headers: { Authorization: `Bearer ${token}` },
+        axios.get(`${publicApiOrigin()}/api/orders/returns`, {
+          headers: optionalBearerHeaders(),
+          withCredentials: true,
         }),
       ]);
       setOrders(ordersRes.data.orders || []);
@@ -32,6 +30,9 @@ export default function OrdersAdminPage() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to load admin orders");
+      if (error.response?.status === 401) {
+        navigate("/admin/login");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -44,9 +45,9 @@ export default function OrdersAdminPage() {
   async function updateOrderStatus(orderId, status) {
     try {
       await axios.put(
-        import.meta.env.VITE_BACKEND_URL + `/api/orders/${orderId}`,
+        `${publicApiOrigin()}/api/orders/${orderId}`,
         { status },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: optionalBearerHeaders(), withCredentials: true }
       );
       toast.success("Order status updated");
       loadData();
@@ -59,9 +60,9 @@ export default function OrdersAdminPage() {
   async function updateReturnStatus(returnId, status) {
     try {
       await axios.put(
-        import.meta.env.VITE_BACKEND_URL + `/api/orders/returns/${returnId}`,
+        `${publicApiOrigin()}/api/orders/returns/${returnId}`,
         { status },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: optionalBearerHeaders(), withCredentials: true }
       );
       toast.success("Return status updated");
       loadData();

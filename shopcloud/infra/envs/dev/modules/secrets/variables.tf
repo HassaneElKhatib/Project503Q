@@ -13,6 +13,16 @@ variable "kms_key_arn" {
   type        = string
 }
 
+variable "aws_region" {
+  description = "Regional SES SMTP endpoint (email-smtp.<region>.amazonaws.com)."
+  type        = string
+}
+
+variable "smtp_from_address" {
+  description = "Verified SES sender for api-gateway transactional mail (matches From)."
+  type        = string
+}
+
 variable "database_secret_arn" {
   description = "Database secret ARN from rds module."
   type        = string

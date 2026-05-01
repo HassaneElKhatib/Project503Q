@@ -1,3 +1,7 @@
+# Auth service deployment.
+#
+# Auth wraps Cognito hosted UI for the customer pool (/auth/*) and,
+# when ADMIN_* env vars are set, the admin pool (/auth/admin/*).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,7 +46,7 @@ spec:
       containers:
         - name: auth
           image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-auth:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8000
@@ -103,6 +107,46 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: cognito-customer
+                  key: state_signing_key
+            - name: ADMIN_COGNITO_USER_POOL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: user_pool_id
+            - name: ADMIN_COGNITO_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: app_client_id
+            - name: ADMIN_COGNITO_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: region
+            - name: ADMIN_COGNITO_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: domain
+            - name: ADMIN_CALLBACK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: callback_url
+            - name: ADMIN_LOGOUT_REDIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: logout_redirect_url
+            - name: ADMIN_COOKIE_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: cookie_domain
+            - name: ADMIN_STATE_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
                   key: state_signing_key
           resources:
             requests:

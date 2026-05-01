@@ -1,8 +1,11 @@
 """Auth service entrypoint."""
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.admin_pool_settings import AdminPoolAuthSettings
+from app.admin_routes import admin_router
 from app.cognito import CognitoClient
 from app.routes import me_router, router
 from app.settings import AuthSettings
@@ -52,6 +55,15 @@ async def lifespan(app: FastAPI):
 
     app.state.settings = settings
 
+    if os.getenv("ADMIN_COGNITO_USER_POOL_ID"):
+        admin_settings = AdminPoolAuthSettings()  # type: ignore[call-arg]
+        app.state.admin_settings = admin_settings
+        app.state.admin_cognito_client = CognitoClient(admin_settings)
+        app.state.admin_state_signer = StateSigner(
+            signing_key=admin_settings.state_signing_key,
+            ttl_seconds=admin_settings.state_ttl_seconds,
+        )
+
     # Readiness check: can we reach the Cognito JWKS URL?
     health_router = app.state.health_router
 
@@ -69,6 +81,9 @@ async def lifespan(app: FastAPI):
 
     # ---- shutdown ----
     await app.state.cognito_client.aclose()
+    admin_client = getattr(app.state, "admin_cognito_client", None)
+    if admin_client:
+        await admin_client.aclose()
     logger.info("auth shutting down")
 
 
@@ -89,6 +104,8 @@ app.state.health_router = health_router
 app.include_router(health_router.router)
 app.include_router(router)
 app.include_router(me_router)
+if os.getenv("ADMIN_COGNITO_USER_POOL_ID"):
+    app.include_router(admin_router, prefix="/auth/admin")
 
 
 @app.get("/", include_in_schema=False)

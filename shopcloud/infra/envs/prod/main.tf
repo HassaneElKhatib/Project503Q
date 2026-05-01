@@ -1,3 +1,8 @@
+############################################
+# Prod environment root
+# Wires Person A network/edge/ecr, Person B eks/cognito,
+# and Person C rds/redis/sqs-invoice/secrets into a single stack.
+############################################
 
 provider "aws" {
   region = var.aws_region
@@ -11,6 +16,7 @@ provider "aws" {
   }
 }
 
+# us-east-1 alias is required by the edge module (CloudFront cert).
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
@@ -24,6 +30,7 @@ provider "aws" {
   }
 }
 
+# Replica alias is consumed by the rds module signature.
 provider "aws" {
   alias  = "replica"
   region = var.replica_aws_region
@@ -60,6 +67,15 @@ locals {
   name_prefix = "${var.project_name}-${var.environment}"
   azs         = slice(sort(data.aws_availability_zones.available.names), 0, 2)
 
+  eks_cluster_name = "${local.name_prefix}-eks"
+
+  use_private_admin_dns = (
+    var.enable_private_admin_access &&
+    var.enable_cognito &&
+    var.enable_edge &&
+    var.enable_eks
+  )
+
   common_tags = merge(
     {
       Project     = var.project_name
@@ -70,6 +86,9 @@ locals {
   )
 }
 
+############################################
+# Person A — Network, ECR, Edge
+############################################
 module "network" {
   source = "./modules/network"
 
@@ -103,6 +122,41 @@ module "edge" {
   origin_domain_name = var.origin_domain_name
 }
 
+module "vpn" {
+  source = "./modules/vpn"
+  count  = var.enable_client_vpn ? 1 : 0
+
+  name_prefix                       = local.name_prefix
+  vpc_id                            = module.network.vpc_id
+  vpc_cidr                          = var.vpc_cidr
+  association_subnet_ids            = module.network.private_app_subnet_ids
+  server_certificate_arn            = var.client_vpn_server_certificate_arn
+  client_root_certificate_chain_arn = var.client_vpn_client_root_certificate_chain_arn
+  client_cidr_block                 = var.client_vpn_client_cidr
+  split_tunnel                      = var.client_vpn_split_tunnel
+  saml_provider_arn                 = var.client_vpn_saml_provider_arn
+  self_service_saml_provider_arn    = var.client_vpn_self_service_saml_provider_arn
+  enable_federated_authentication   = var.client_vpn_enable_saml_federation
+  saml_metadata_document            = var.client_vpn_saml_metadata_document
+  tags                              = local.common_tags
+}
+
+module "admin_private_access" {
+  source = "./modules/admin_private_access"
+  count  = local.use_private_admin_dns ? 1 : 0
+
+  name_prefix    = local.name_prefix
+  domain_name    = var.domain_name
+  vpc_id         = module.network.vpc_id
+  public_zone_id = module.edge[0].zone_id
+  cluster_name   = local.eks_cluster_name
+  record_label   = var.admin_private_dns_record_label
+  tags           = local.common_tags
+}
+
+############################################
+# Person B — Cognito, EKS, Helm add-ons
+############################################
 module "cognito" {
   source = "./modules/cognito"
   count  = var.enable_cognito ? 1 : 0
@@ -113,18 +167,22 @@ module "cognito" {
   admin_domain_prefix    = var.admin_domain_prefix
   customer_callback_url  = var.customer_callback_url
   customer_logout_url    = var.customer_logout_url
-  admin_callback_url     = var.admin_callback_url
-  admin_logout_url       = var.admin_logout_url
-  cookie_domain          = var.cookie_domain
-  kms_key_id             = var.kms_key_arn
-  tags                   = local.common_tags
+  admin_callback_url = local.use_private_admin_dns ? (
+    "https://${module.admin_private_access[0].admin_fqdn}/auth/admin/callback"
+  ) : var.admin_callback_url
+  admin_logout_url = local.use_private_admin_dns ? (
+    "https://${module.admin_private_access[0].admin_fqdn}/"
+  ) : var.admin_logout_url
+  cookie_domain = var.cookie_domain
+  kms_key_id    = var.kms_key_arn
+  tags          = local.common_tags
 }
 
 module "eks" {
   source = "./modules/eks"
   count  = var.enable_eks ? 1 : 0
 
-  cluster_name                  = "${local.name_prefix}-eks"
+  cluster_name                  = local.eks_cluster_name
   aws_region                    = var.aws_region
   kubernetes_version            = var.kubernetes_version
   enable_kms_secrets_encryption = true
@@ -139,6 +197,7 @@ module "eks" {
   enable_irsa        = true
   enable_helm_addons = var.enable_helm_addons
 
+  # Wire IRSA-readable secrets directly from the producing modules.
   secret_arn_shared_database  = var.enable_data ? module.rds[0].secret_arn_database : null
   secret_arn_shared_redis     = var.enable_data ? module.redis[0].secret_arn_redis : null
   secret_arn_invoice_queue    = var.enable_data ? module.sqs_invoice[0].secret_arn_invoice_queue : null
@@ -152,6 +211,7 @@ module "eks" {
       module.redis[0].secret_arn_redis,
       module.sqs_invoice[0].secret_arn_invoice_queue,
       module.secrets[0].api_gateway_jwt_secret_arn,
+      module.secrets[0].api_gateway_smtp_secret_arn,
     ] : [],
     var.enable_data && var.enable_cognito ? [
       module.cognito[0].customer_cognito_secret_arn,
@@ -181,6 +241,9 @@ module "eks_helm_addons" {
   external_secrets_role_arn   = module.eks[0].external_secrets_irsa_role_arn
 }
 
+############################################
+# Person C — RDS, Redis, SQS+Lambda, Secrets
+############################################
 module "rds" {
   source = "./modules/rds"
   count  = var.enable_data ? 1 : 0
@@ -190,14 +253,15 @@ module "rds" {
     aws.replica = aws.replica
   }
 
-  project_name                       = var.project_name
-  env                                = var.environment
-  vpc_id                             = module.network.vpc_id
-  private_data_subnet_ids            = module.network.private_data_subnet_ids
-  kms_key_arn                        = var.kms_key_arn
-  replica_vpc_id                     = var.replica_vpc_id
-  replica_private_data_subnet_ids    = var.replica_private_data_subnet_ids
-  replica_kms_key_arn                = var.replica_kms_key_arn
+  project_name                    = var.project_name
+  env                             = var.environment
+  vpc_id                          = module.network.vpc_id
+  private_data_subnet_ids         = module.network.private_data_subnet_ids
+  kms_key_arn                     = var.kms_key_arn
+  replica_vpc_id                  = var.replica_vpc_id
+  replica_private_data_subnet_ids = var.replica_private_data_subnet_ids
+  replica_kms_key_arn             = var.replica_kms_key_arn
+  # Pods/nodes use the EKS cluster security group; without this, Postgres is unreachable from the app VPC.
   allowed_security_group_ids         = var.enable_eks ? [module.eks[0].node_security_group_id] : []
   backup_retention_days              = var.rds_backup_retention_days
   replica_allowed_security_group_ids = []
@@ -243,6 +307,8 @@ module "secrets" {
   project_name             = var.project_name
   env                      = var.environment
   kms_key_arn              = var.kms_key_arn
+  aws_region               = var.aws_region
+  smtp_from_address        = var.ses_from_address
   database_secret_arn      = module.rds[0].secret_arn_database
   redis_secret_arn         = module.redis[0].secret_arn_redis
   invoice_queue_secret_arn = module.sqs_invoice[0].secret_arn_invoice_queue

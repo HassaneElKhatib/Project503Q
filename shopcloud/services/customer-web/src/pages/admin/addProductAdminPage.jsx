@@ -1,4 +1,6 @@
 import axios from "axios";
+import { optionalBearerHeaders } from "../../config/axiosConfig";
+import { publicApiOrigin } from "../../utils/publicApiOrigin";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,8 +21,9 @@ export default function AddProductAdminPage() {
 
   useEffect(() => {
     axios
-      .get(import.meta.env.VITE_BACKEND_URL + "/api/categories", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      .get(`${publicApiOrigin()}/api/categories`, {
+        headers: optionalBearerHeaders(),
+        withCredentials: true,
       })
       .then((res) => setCategories(res.data.categories || []))
       .catch(() => setCategories([]));
@@ -30,13 +33,6 @@ export default function AddProductAdminPage() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
       const imageUrls = [];
 
       const alternativeArray = alternativeNames.split(",").map(name => name.trim()).filter(Boolean);
@@ -54,13 +50,9 @@ export default function AddProductAdminPage() {
       };
 
       const res = await axios.post(
-        import.meta.env.VITE_BACKEND_URL + "/api/products",
+        `${publicApiOrigin()}/api/products`,
         productData,
-        {
-          headers: {
-            Authorization: "Bearer " + token
-          }
-        }
+        { headers: optionalBearerHeaders(), withCredentials: true }
       );
 
       console.log("Product Was Successfully Created");

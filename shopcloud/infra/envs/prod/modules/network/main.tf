@@ -38,8 +38,9 @@ resource "aws_subnet" "private_app" {
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "${var.name_prefix}-private-app-${each.key}"
-    Tier = "private-app"
+    Name                              = "${var.name_prefix}-private-app-${each.key}"
+    Tier                              = "private-app"
+    "kubernetes.io/role/internal-elb" = "1"
   }
 }
 
@@ -83,6 +84,7 @@ resource "aws_nat_gateway" "this" {
 }
 
 locals {
+  # Route each AZ to its own NAT when available; otherwise fall back to NAT[0] (typical dev).
   az_to_nat_gateway_id = {
     for idx, az in var.azs :
     az => aws_nat_gateway.this[min(idx, var.nat_gateway_count - 1)].id

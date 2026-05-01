@@ -1,3 +1,11 @@
+# Admin service deployment.
+#
+# Admin is reachable only from the INTERNAL ALB (via Client VPN). The admin
+# ingress in cluster/ingress-admin.yaml points at this service.
+#
+# Notice we use the ADMIN Cognito pool config (cognito-admin secret), not
+# the customer pool. A customer-pool token will fail validation here because
+# the issuer claim won't match.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -64,6 +72,8 @@ spec:
               value: INFO
             - name: REQUIRED_ADMIN_GROUP
               value: admin
+            # Database (read-mostly) - can use writer endpoint or read replica;
+            # we use writer for simplicity since admin status updates need writes.
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -71,6 +81,7 @@ spec:
                   key: writer_url
             - name: DB_POOL_SIZE
               value: "5"
+            # ADMIN Cognito pool (NOT customer)
             - name: COGNITO_USER_POOL_ID
               valueFrom:
                 secretKeyRef:

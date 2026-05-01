@@ -2,65 +2,61 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { publicApiOrigin } from "../utils/publicApiOrigin";
 
 export default function ResetPasswordPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const[newPassword, setNewPassword] = useState("");
-  const[confirmPassword, setConfirmPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const resetToken = location.state?.resetToken;
+  const email = location.state?.email;
+  const resetCode = location.state?.resetCode;
 
   useEffect(() => {
-    if(!resetToken){
-      toast.error("Invalid access to reset password page.");  
+    if (!email || !resetCode) {
+      toast.error("Invalid access to reset password page.");
       navigate("/login");
     }
+  }, [email, resetCode, navigate]);
 
-  },[resetToken, navigate]);
-
-  async function resetPassword(){
+  async function resetPassword() {
     if (!newPassword || !confirmPassword) {
       toast.error("Please fill in both password fields");
       return;
     }
-  
+
     if (newPassword !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
-    try{
-      const response = await axios.post(import.meta.env.VITE_BACKEND_URL+"/api/users/reset-password", { resetToken: resetToken, newPassword: newPassword });
-      toast.success(response.data.message);
+    try {
+      const response = await axios.post(`${publicApiOrigin()}/api/auth/reset-password`, {
+        email,
+        code: resetCode,
+        password: newPassword,
+      });
+      toast.success(response.data.message || "Password updated");
       navigate("/login");
-
-    }catch(error){
+    } catch (error) {
       console.log(error);
-      toast.error(error.response?.data?.message || "Failed to reset password");
+      toast.error(error.response?.data?.detail || "Failed to reset password");
     }
   }
 
   return (
     <div className="w-full min-h-screen flex justify-center items-center bg-primary">
       <div className="w-[500px] h-[450px] bg-white shadow-2xl rounded-[30px] flex flex-col justify-center items-center relative gap-[12px] p-6">
-        
-        {/* Heading */}
         <h1 className="absolute top-[65px] text-2xl font-semibold text-secondary flex flex-col justify-center items-center">
           Reset Password
         </h1>
-        
-        {/* Subtext */}
+
         <div className="flex flex-col items-center text-center mt-16 gap-1">
-          <h2 className="text-xl text-secondary font-medium">
-            Enter Your New Password
-          </h2>
-          <span className="text-secondary text-sm">
-            Make sure your password is strong
-          </span>
+          <h2 className="text-xl text-secondary font-medium">Enter Your New Password</h2>
+          <span className="text-secondary text-sm">Make sure your password is strong</span>
         </div>
-        
-        {/* New Password Input */}
+
         <input
           type="password"
           placeholder="New Password"
@@ -70,8 +66,7 @@ export default function ResetPasswordPage() {
             setNewPassword(e.target.value);
           }}
         />
-        
-        {/* Confirm Password Input */}
+
         <input
           type="password"
           placeholder="Confirm Password"
@@ -81,17 +76,15 @@ export default function ResetPasswordPage() {
             setConfirmPassword(e.target.value);
           }}
         />
-        
-        {/* Button */}
-        <button className="w-[300px] h-[40px] bg-accent text-white rounded-xl mt-2 hover:bg-accent-hover transition" onClick={resetPassword}>
+
+        <button
+          className="w-[300px] h-[40px] bg-accent text-white rounded-xl mt-2 hover:bg-accent-hover transition"
+          onClick={resetPassword}
+        >
           Reset Password
         </button>
-        
-        {/* Back link */}
-        <Link
-          to="/login"
-          className="text-accent hover:underline text-sm mt-2"
-        >
+
+        <Link to="/login" className="text-accent hover:underline text-sm mt-2">
           Back to Login page
         </Link>
       </div>

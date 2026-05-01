@@ -1,3 +1,9 @@
+############################################
+# Reusable build + push pipeline for any service
+# Used by ci-<service>.yml workflows (default ECR: shopcloud-<service>).
+# Prod manifests expect shopcloud-prod-<service>; either pass ecr_repository_base: shopcloud-prod
+# with a prod OIDC role or build/push via shopcloud/scripts/push-prod-ecr.ps1 (:latest).
+############################################
 name: Reusable Build Deploy
 
 on:
@@ -28,6 +34,11 @@ on:
         required: false
         type: string
         default: "eu-central-1"
+      # ECR repo name = "{ecr_repository_base}-{service}" (e.g. shopcloud-auth vs shopcloud-prod-auth).
+      ecr_repository_base:
+        required: false
+        type: string
+        default: "shopcloud"
     secrets:
       aws_role_arn:
         description: "OIDC role to assume for ECR push (set per environment)."
@@ -107,7 +118,7 @@ jobs:
             docker_context="shopcloud"
           fi
 
-          docker build -f "${path}/Dockerfile" -t "shopcloud-${{ inputs.service }}:${tag}" "${docker_context}"
+          docker build -f "${path}/Dockerfile" -t "${{ inputs.ecr_repository_base }}-${{ inputs.service }}:${tag}" "${docker_context}"
 
       - name: Push to ECR
         if: ${{ github.event_name != 'pull_request' && env.AWS_ROLE_ARN != '' }}
@@ -115,7 +126,9 @@ jobs:
           set -euxo pipefail
           tag="${GITHUB_SHA::12}"
           aws_account="$(aws sts get-caller-identity --query Account --output text)"
-          repo="${aws_account}.dkr.ecr.${AWS_REGION}.amazonaws.com/shopcloud-${{ inputs.service }}"
-          docker tag "shopcloud-${{ inputs.service }}:${tag}" "${repo}:${tag}"
+          base="${{ inputs.ecr_repository_base }}"
+          repo="${aws_account}.dkr.ecr.${AWS_REGION}.amazonaws.com/${base}-${{ inputs.service }}"
+          docker tag "${base}-${{ inputs.service }}:${tag}" "${repo}:${tag}"
           docker push "${repo}:${tag}"
+
 

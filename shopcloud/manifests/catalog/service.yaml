@@ -15,6 +15,9 @@ spec:
       targetPort: http
       protocol: TCP
 ---
+# IRSA-bound service account.
+# B's terraform/modules/eks creates the IAM role and writes the role ARN
+# into this annotation via a kustomize patch or helm value.
 apiVersion: v1
 kind: ServiceAccount
 metadata:

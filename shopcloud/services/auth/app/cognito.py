@@ -9,17 +9,38 @@ Cognito requires Basic auth with client_id:client_secret if the app client
 has a secret. App clients used by SPAs typically have no secret, but we
 support both.
 """
+from __future__ import annotations
+
 import base64
 from dataclasses import dataclass
+from typing import Protocol
 from urllib.parse import urlencode
 
 import httpx
 
-from app.settings import AuthSettings
 from libs.errors import UpstreamError
 from libs.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+class SupportsCognitoOAuth(Protocol):
+    """Settings bundle with OAuth URLs and client credentials (customer or admin pool)."""
+
+    cognito_app_client_id: str
+    cognito_app_client_secret: str | None
+    callback_url: str
+    logout_redirect_url: str
+    oauth_scopes: list[str]
+
+    @property
+    def authorize_url(self) -> str: ...
+
+    @property
+    def token_url(self) -> str: ...
+
+    @property
+    def logout_url(self) -> str: ...
 
 
 @dataclass
@@ -34,7 +55,7 @@ class TokenSet:
 
 
 class CognitoClient:
-    def __init__(self, settings: AuthSettings) -> None:
+    def __init__(self, settings: SupportsCognitoOAuth) -> None:
         self._settings = settings
         self._http = httpx.AsyncClient(timeout=10.0)
 

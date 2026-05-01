@@ -1,3 +1,7 @@
+# NetworkPolicies for the app namespace.
+# Default-deny ingress, then explicitly allow the traffic we expect.
+# Requires a CNI that supports NetworkPolicy (Calico, or VPC CNI with Calico
+# add-on). EKS clusters need this enabled at cluster setup.
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -52,6 +56,8 @@ spec:
         - protocol: TCP
           port: 8000
 ---
+# Cart needs to call catalog. Checkout reads cart's Redis (no policy needed
+# for outgoing). All cross-pod calls inside the namespace go through this.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

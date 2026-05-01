@@ -12,6 +12,7 @@ if _TMP_DB.exists():
     _TMP_DB.unlink()
 os.environ["GATEWAY_DB_URL"] = f"sqlite+aiosqlite:///{_TMP_DB.as_posix()}"
 os.environ.setdefault("JWT_SECRET", "test-secret")
+os.environ["USE_LOCAL_GATEWAY_AUTH"] = "true"
 
 # Force reimport so settings pick up the env we just set.
 for mod in list(sys.modules):

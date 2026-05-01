@@ -7,4 +7,6 @@ terraform {
       version = ">= 5.50, < 7.0"
     }
   }
+  # Bootstrap is intentionally local-state. After it's applied, every
+  # other env uses the bucket + DynamoDB table it produces.
 }

@@ -1,13 +1,17 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react"
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react"
 import toast from "react-hot-toast";
 import { useGoogleLogin } from '@react-oauth/google';
 import { handleGoodleLogin, handleLogin, handleVerifyOtp } from "../services/authService";
+import { useHostedCognitoAuth } from "../utils/authMode";
 
 export default function LoginPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const cognitoHosted = useHostedCognitoAuth();
+
   const[email, setEmail] = useState("");
   const[password, setPassword] = useState("");
-  const navigate = useNavigate();
   const[isLoading, setIsLoading] = useState(false);
   const[isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [mfaToken, setMfaToken] = useState("");
@@ -16,6 +20,14 @@ export default function LoginPage() {
   const isGoogleLoginEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
   const serumVisual =
     "/ecommerce-auth-bg.jpg";
+
+  useEffect(() => {
+    if (!cognitoHosted) return;
+    const isAdminLogin = location.pathname.includes("/admin/login");
+    const authPath = isAdminLogin ? "/auth/admin/login" : "/auth/login";
+    const next = isAdminLogin ? "/admin" : "/client/dashboard";
+    window.location.replace(`${authPath}?next=${encodeURIComponent(next)}`);
+  }, [cognitoHosted, location.pathname]);
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (response) => { 
@@ -50,7 +62,8 @@ export default function LoginPage() {
 
       if (loginResult?.mfaRequired) {
         setMfaToken(loginResult.mfaToken);
-        setOtpHint(loginResult.debugOtp ? `Local OTP: ${loginResult.debugOtp}` : "");
+        const showDevCode = Boolean(loginResult.debugOtp) && loginResult.emailSent !== true;
+        setOtpHint(showDevCode ? `Verification code (email unavailable): ${loginResult.debugOtp}` : "");
         setIsLoading(false);
         return;
       }
@@ -77,6 +90,14 @@ export default function LoginPage() {
       navigate("/");
     }
   };
+
+  if (cognitoHosted) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center text-slate-600">
+        Redirecting to secure sign-in…
+      </div>
+    );
+  }
 
   return (
     <div

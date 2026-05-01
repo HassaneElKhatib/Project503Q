@@ -1,3 +1,4 @@
+# Copy to backend.hcl after running infra/bootstrap once.
 
 bucket         = "shopcloud-tfstate-712044128773"
 key            = "infra/envs/prod/terraform.tfstate"

@@ -1,4 +1,3 @@
-"""Unit tests for the OAuth state signer."""
 import time
 
 import pytest

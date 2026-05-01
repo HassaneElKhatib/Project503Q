@@ -1,3 +1,6 @@
+############################################
+# Identity
+############################################
 output "environment" {
   value = var.environment
 }
@@ -6,6 +9,9 @@ output "aws_region" {
   value = var.aws_region
 }
 
+############################################
+# Network (Person A)
+############################################
 output "vpc_id" {
   value = module.network.vpc_id
 }
@@ -42,6 +48,9 @@ output "acm_certificate_arn" {
   value = var.enable_edge ? module.edge[0].acm_certificate_arn : null
 }
 
+############################################
+# EKS (Person B)
+############################################
 output "cluster_name" {
   value = var.enable_eks ? module.eks[0].cluster_name : null
 }
@@ -66,6 +75,9 @@ output "irsa_role_arns" {
   } : null
 }
 
+############################################
+# Cognito (Person B)
+############################################
 output "cognito_customer_user_pool_id" {
   value = var.enable_cognito ? module.cognito[0].customer_user_pool_id : null
 }
@@ -82,6 +94,9 @@ output "cognito_admin_app_client_id" {
   value = var.enable_cognito ? module.cognito[0].admin_app_client_id : null
 }
 
+############################################
+# Data plane (Person C)
+############################################
 output "rds_writer_endpoint" {
   value = var.enable_data ? module.rds[0].writer_endpoint : null
 }

@@ -1,3 +1,8 @@
+############################################
+# Dev environment root
+# Wires Person A network/edge/ecr, Person B eks/cognito,
+# and Person C rds/redis/sqs-invoice/secrets into a single stack.
+############################################
 
 provider "aws" {
   region = var.aws_region
@@ -11,6 +16,7 @@ provider "aws" {
   }
 }
 
+# us-east-1 alias is required by the edge module (CloudFront cert).
 provider "aws" {
   alias  = "us_east_1"
   region = "us-east-1"
@@ -24,6 +30,7 @@ provider "aws" {
   }
 }
 
+# Replica alias is consumed by the rds module signature.
 provider "aws" {
   alias  = "replica"
   region = var.replica_aws_region
@@ -70,6 +77,9 @@ locals {
   )
 }
 
+############################################
+# Person A — Network, ECR, Edge
+############################################
 module "network" {
   source = "./modules/network"
 
@@ -103,6 +113,9 @@ module "edge" {
   origin_domain_name = var.origin_domain_name
 }
 
+############################################
+# Person B — Cognito, EKS, Helm add-ons
+############################################
 module "cognito" {
   source = "./modules/cognito"
   count  = var.enable_cognito ? 1 : 0
@@ -139,6 +152,7 @@ module "eks" {
   enable_irsa        = true
   enable_helm_addons = var.enable_helm_addons
 
+  # Wire IRSA-readable secrets directly from the producing modules.
   secret_arn_shared_database  = var.enable_data ? module.rds[0].secret_arn_database : null
   secret_arn_shared_redis     = var.enable_data ? module.redis[0].secret_arn_redis : null
   secret_arn_invoice_queue    = var.enable_data ? module.sqs_invoice[0].secret_arn_invoice_queue : null
@@ -152,6 +166,7 @@ module "eks" {
       module.redis[0].secret_arn_redis,
       module.sqs_invoice[0].secret_arn_invoice_queue,
       module.secrets[0].api_gateway_jwt_secret_arn,
+      module.secrets[0].api_gateway_smtp_secret_arn,
     ] : [],
     var.enable_data && var.enable_cognito ? [
       module.cognito[0].customer_cognito_secret_arn,
@@ -183,6 +198,9 @@ module "eks_helm_addons" {
   enable_cluster_autoscaler   = var.enable_cluster_autoscaler
 }
 
+############################################
+# Person C — RDS, Redis, SQS+Lambda, Secrets
+############################################
 module "rds" {
   source = "./modules/rds"
   count  = var.enable_data ? 1 : 0
@@ -245,6 +263,8 @@ module "secrets" {
   project_name             = var.project_name
   env                      = var.environment
   kms_key_arn              = var.kms_key_arn
+  aws_region               = var.aws_region
+  smtp_from_address        = var.ses_from_address
   database_secret_arn      = module.rds[0].secret_arn_database
   redis_secret_arn         = module.redis[0].secret_arn_redis
   invoice_queue_secret_arn = module.sqs_invoice[0].secret_arn_invoice_queue

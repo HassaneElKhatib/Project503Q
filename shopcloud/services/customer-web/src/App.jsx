@@ -1,5 +1,7 @@
 import './App.css'
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { mergeCartOnLogin } from './utils/cart'
 import LoginPage from './pages/loginPage'
 import RegisterPage from './pages/registerPage'
 import AdminPage from './pages/adminPage'
@@ -11,7 +13,6 @@ import ResetPasswordPage from './pages/resetPasswordPage'
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import ClientDashboard from './pages/clientDashboardPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-// import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +28,10 @@ const queryClient = new QueryClient({
 
 function App() {
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "local-dev-disabled";
+
+  useEffect(() => {
+    mergeCartOnLogin();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

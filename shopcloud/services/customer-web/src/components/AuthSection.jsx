@@ -1,10 +1,10 @@
 import { MdSendTimeExtension } from "react-icons/md";
 import { Link } from "react-router-dom";
 
-export default function AuthSection({token, user, defaultImage}) {
+export default function AuthSection({ user, defaultImage }) {
   const displayName = user?.firstName || user?.name || "Account";
 
-  if(token) {
+  if (user) {
     return (
       <div className="flex gap-5 justify-center items-center text-xl">
             <Link to="/orders" className="items-center justify-center gap-1 hover:text-black hidden md:flex">

@@ -1,29 +1,52 @@
+# Copy to terraform.tfvars (gitignored).
 
 environment = "prod"
 aws_region  = "eu-central-1"
 
+# --- Network / Edge (Person A) ---
 enable_edge        = true
 domain_name        = "shopcloud.example.com"
 origin_domain_name = "k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com"
 
+# --- Client VPN ---
+enable_client_vpn = true
+# ACM server certificate for VPN endpoint:
+client_vpn_server_certificate_arn = "REPLACE_CLIENT_VPN_SERVER_CERT_ARN"
+# ACM imported client root cert chain ARN used for certificate authentication:
+client_vpn_client_root_certificate_chain_arn = "REPLACE_CLIENT_VPN_CLIENT_CA_ARN"
+# CIDR given to connected VPN clients.
+client_vpn_client_cidr = "10.222.0.0/22"
+# SAML + MFA: MFA happens at your IdP during SAML sign-in (enable MFA there).
+# Option A — paste metadata XML (creates IAM SAML provider):
+client_vpn_enable_saml_federation = false
+# client_vpn_saml_metadata_document = file("${path.root}/vpn-idp-metadata.xml")
+# Option B — use an existing IAM SAML provider ARN instead:
+client_vpn_saml_provider_arn              = null
+client_vpn_self_service_saml_provider_arn = null
+
+# --- EKS (Person B) ---
 enable_eks         = true
 enable_helm_addons = true
 kubernetes_version = "1.30"
+# Cost-conscious: t3.micro + vpc_cni_enable_prefix_delegation (default in variables.tf).
 node_instance_types = ["t3.micro"]
 node_desired_size   = 2
 node_min_size       = 2
 node_max_size       = 5
 
+# --- Cognito (Person B) ---
 enable_cognito         = true
 cookie_domain          = ".shopcloud.example.com"
 customer_domain_prefix = "shopcloud-prod-customer"
 admin_domain_prefix    = "shopcloud-prod-admin"
 
+# --- Data plane (Person C) ---
 enable_data               = true
 kms_key_arn               = "REPLACE_PRIMARY_REGION_KMS_KEY_ARN"
 rds_backup_retention_days = 7
 ses_from_address          = "noreply@shopcloud.example.com"
 
+# Cross-region replica
 replica_aws_region              = "eu-west-1"
 replica_vpc_id                  = "REPLACE_REPLICA_VPC_ID"
 replica_private_data_subnet_ids = ["REPLACE_SUBNET_1", "REPLACE_SUBNET_2"]
