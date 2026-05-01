@@ -261,7 +261,7 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           conftest test tfplan.json \
-            --policy ${{ github.workspace }}/policy/terraform \
+            --policy ${{ github.workspace }}/shopcloud/policy/terraform \
             --all-namespaces
 
       - name: Setup Infracost
@@ -523,7 +523,7 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           conftest test tfplan.json \
-            --policy ${{ github.workspace }}/policy/terraform \
+            --policy ${{ github.workspace }}/shopcloud/policy/terraform \
             --all-namespaces
 
       - name: Show apply warning
