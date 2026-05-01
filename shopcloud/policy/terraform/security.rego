@@ -1,10 +1,7 @@
 package terraform.security
 
-import future.keywords.in
-import future.keywords.if
-
 # RDS instances must have storage_encrypted = true
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_db_instance"
 	is_creating(resource)
@@ -13,7 +10,7 @@ deny contains msg if {
 }
 
 # RDS instances must not be publicly accessible
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_db_instance"
 	is_creating(resource)
@@ -22,7 +19,7 @@ deny contains msg if {
 }
 
 # RDS instances must have a KMS key for storage encryption
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_db_instance"
 	is_creating(resource)
@@ -31,7 +28,7 @@ deny contains msg if {
 }
 
 # Secrets Manager secrets must be encrypted with a customer-managed KMS key
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_secretsmanager_secret"
 	is_creating(resource)
@@ -40,7 +37,7 @@ deny contains msg if {
 }
 
 # ElastiCache replication groups must enable encryption at rest
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_elasticache_replication_group"
 	is_creating(resource)
@@ -49,7 +46,7 @@ deny contains msg if {
 }
 
 # ElastiCache replication groups must enable encryption in transit
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_elasticache_replication_group"
 	is_creating(resource)
@@ -58,7 +55,7 @@ deny contains msg if {
 }
 
 # S3 public-access blocks must block all four flags
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_s3_bucket_public_access_block"
 	is_creating(resource)
@@ -67,7 +64,7 @@ deny contains msg if {
 }
 
 # SQS queues must use a KMS master key
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_sqs_queue"
 	is_creating(resource)
@@ -76,7 +73,7 @@ deny contains msg if {
 }
 
 # Security groups must not allow 0.0.0.0/0 ingress
-deny contains msg if {
+deny[msg] {
 	resource := input.resource_changes[_]
 	resource.type == "aws_security_group"
 	is_creating(resource)
@@ -85,15 +82,74 @@ deny contains msg if {
 	msg := sprintf("Security group %s must not allow 0.0.0.0/0 ingress", [resource.address])
 }
 
-is_creating(resource) if {
+# Block destroys/replacements of critical infra.
+# We allow aws_secretsmanager_secret_version replacement because secret version
+# rotation is expected and non-destructive to core infrastructure.
+deny[msg] {
+	resource := input.resource_changes[_]
+	has_delete(resource)
+	resource.type != "aws_secretsmanager_secret_version"
+	is_protected_destroy_type(resource.type)
+	msg := sprintf("Destroy/replacement is blocked for critical resource %s (%s) actions=%v", [resource.address, resource.type, resource.change.actions])
+}
+
+deny[msg] {
+	resource := input.resource_changes[_]
+	has_delete(resource)
+	resource.type != "aws_secretsmanager_secret_version"
+	is_admin_or_vpn_resource(resource.address)
+	msg := sprintf("Destroy/replacement is blocked for admin/VPN resource %s actions=%v", [resource.address, resource.change.actions])
+}
+
+is_creating(resource) {
 	resource.change.actions[_] == "create"
 }
 
-is_creating(resource) if {
+is_creating(resource) {
 	resource.change.actions[_] == "update"
 }
 
-all_blocked(resource) if {
+has_delete(resource) {
+	resource.change.actions[_] == "delete"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_db_instance"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_eks_node_group"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_eks_cluster"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_cloudfront_distribution"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_route53_zone"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_ec2_client_vpn_endpoint"
+}
+
+is_protected_destroy_type(resource_type) {
+	resource_type == "aws_cognito_user_pool"
+}
+
+is_admin_or_vpn_resource(address) {
+	contains(address, "module.admin_private_access")
+}
+
+is_admin_or_vpn_resource(address) {
+	contains(address, "module.vpn")
+}
+
+all_blocked(resource) {
 	resource.change.after.block_public_acls == true
 	resource.change.after.block_public_policy == true
 	resource.change.after.ignore_public_acls == true
