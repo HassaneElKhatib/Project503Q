@@ -127,6 +127,12 @@ jobs:
           test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS" || { echo "Missing PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS"; exit 1; }
           test -n "$REPLICA_KMS_KEY_ARN" || { echo "Missing PROD_REPLICA_KMS_KEY_ARN"; exit 1; }
 
+          CLIENT_VPN_SERVER_CERTIFICATE_ARN="$(printf '%s' "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" | tr -d '[:space:]')"
+          CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN="$(printf '%s' "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" | tr -d '[:space:]')"
+          KMS_KEY_ARN="$(printf '%s' "$KMS_KEY_ARN" | tr -d '[:space:]')"
+          REPLICA_VPC_ID="$(printf '%s' "$REPLICA_VPC_ID" | tr -d '[:space:]')"
+          REPLICA_KMS_KEY_ARN="$(printf '%s' "$REPLICA_KMS_KEY_ARN" | tr -d '[:space:]')"
+
           jq -n \
             --arg domain_name "$DOMAIN_NAME" \
             --arg origin_domain_name "$ORIGIN_DOMAIN_NAME" \
@@ -440,6 +446,12 @@ jobs:
           test -n "$REPLICA_VPC_ID" || { echo "Missing PROD_REPLICA_VPC_ID"; exit 1; }
           test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS" || { echo "Missing PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS"; exit 1; }
           test -n "$REPLICA_KMS_KEY_ARN" || { echo "Missing PROD_REPLICA_KMS_KEY_ARN"; exit 1; }
+
+          CLIENT_VPN_SERVER_CERTIFICATE_ARN="$(printf '%s' "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" | tr -d '[:space:]')"
+          CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN="$(printf '%s' "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" | tr -d '[:space:]')"
+          KMS_KEY_ARN="$(printf '%s' "$KMS_KEY_ARN" | tr -d '[:space:]')"
+          REPLICA_VPC_ID="$(printf '%s' "$REPLICA_VPC_ID" | tr -d '[:space:]')"
+          REPLICA_KMS_KEY_ARN="$(printf '%s' "$REPLICA_KMS_KEY_ARN" | tr -d '[:space:]')"
 
           jq -n \
             --arg domain_name "$DOMAIN_NAME" \
