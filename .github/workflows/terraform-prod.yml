@@ -5,13 +5,13 @@ on:
     branches: [main]
     paths:
       - "shopcloud/infra/envs/prod/**"
-      - "policy/terraform/**"
+      - "shopcloud/policy/terraform/**"
       - ".github/workflows/terraform-prod.yml"
   push:
     branches: [main]
     paths:
       - "shopcloud/infra/envs/prod/**"
-      - "policy/terraform/**"
+      - "shopcloud/policy/terraform/**"
       - ".github/workflows/terraform-prod.yml"
   workflow_dispatch: {}
 
