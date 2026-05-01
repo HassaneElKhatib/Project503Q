@@ -42,6 +42,7 @@ jobs:
       pull-requests: write
     env:
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,6 +57,77 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.7.5
+
+      - name: Generate prod CI tfvars
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          DOMAIN_NAME: ${{ vars.PROD_DOMAIN_NAME || 'www.welovedassouki.store' }}
+          ORIGIN_DOMAIN_NAME: ${{ vars.PROD_ORIGIN_DOMAIN_NAME || 'k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com' }}
+          COOKIE_DOMAIN: ${{ vars.PROD_COOKIE_DOMAIN || '.www.welovedassouki.store' }}
+          ADMIN_PRIVATE_DNS_RECORD_LABEL: ${{ vars.PROD_ADMIN_PRIVATE_DNS_RECORD_LABEL || 'priv-admin' }}
+          CLIENT_VPN_CLIENT_CIDR: ${{ vars.PROD_CLIENT_VPN_CLIENT_CIDR || '10.222.0.0/22' }}
+          CLIENT_VPN_SERVER_CERTIFICATE_ARN: ${{ secrets.PROD_CLIENT_VPN_SERVER_CERTIFICATE_ARN }}
+          CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN: ${{ secrets.PROD_CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN }}
+          KMS_KEY_ARN: ${{ secrets.PROD_KMS_KEY_ARN }}
+          REPLICA_VPC_ID: ${{ vars.PROD_REPLICA_VPC_ID }}
+          REPLICA_PRIVATE_DATA_SUBNET_IDS: ${{ vars.PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS }}
+          REPLICA_KMS_KEY_ARN: ${{ vars.PROD_REPLICA_KMS_KEY_ARN }}
+          SES_FROM_ADDRESS: ${{ vars.PROD_SES_FROM_ADDRESS || 'noreply@welovedassouki.store' }}
+        run: |
+          test -n "$CLIENT_VPN_SERVER_CERTIFICATE_ARN"
+          test -n "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN"
+          test -n "$KMS_KEY_ARN"
+          test -n "$REPLICA_VPC_ID"
+          test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS"
+          test -n "$REPLICA_KMS_KEY_ARN"
+
+          jq -n \
+            --arg domain_name "$DOMAIN_NAME" \
+            --arg origin_domain_name "$ORIGIN_DOMAIN_NAME" \
+            --arg cookie_domain "$COOKIE_DOMAIN" \
+            --arg admin_private_dns_record_label "$ADMIN_PRIVATE_DNS_RECORD_LABEL" \
+            --arg client_vpn_client_cidr "$CLIENT_VPN_CLIENT_CIDR" \
+            --arg client_vpn_server_certificate_arn "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" \
+            --arg client_vpn_client_root_certificate_chain_arn "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" \
+            --arg kms_key_arn "$KMS_KEY_ARN" \
+            --arg replica_vpc_id "$REPLICA_VPC_ID" \
+            --argjson replica_private_data_subnet_ids "$REPLICA_PRIVATE_DATA_SUBNET_IDS" \
+            --arg replica_kms_key_arn "$REPLICA_KMS_KEY_ARN" \
+            --arg ses_from_address "$SES_FROM_ADDRESS" \
+            '{
+              environment: "prod",
+              aws_region: "eu-central-1",
+
+              enable_edge: true,
+              enable_eks: true,
+              enable_helm_addons: true,
+              enable_cognito: true,
+              enable_data: true,
+              enable_private_admin_access: true,
+              enable_client_vpn: true,
+
+              domain_name: $domain_name,
+              origin_domain_name: $origin_domain_name,
+              cookie_domain: $cookie_domain,
+
+              customer_callback_url: ("https://" + $domain_name + "/auth/callback"),
+              customer_logout_url: ("https://" + $domain_name + "/"),
+
+              admin_private_dns_record_label: $admin_private_dns_record_label,
+              admin_callback_url: ("https://" + $admin_private_dns_record_label + "." + $domain_name + "/auth/admin/callback"),
+              admin_logout_url: ("https://" + $admin_private_dns_record_label + "." + $domain_name + "/"),
+
+              client_vpn_client_cidr: $client_vpn_client_cidr,
+              client_vpn_server_certificate_arn: $client_vpn_server_certificate_arn,
+              client_vpn_client_root_certificate_chain_arn: $client_vpn_client_root_certificate_chain_arn,
+
+              kms_key_arn: $kms_key_arn,
+              replica_vpc_id: $replica_vpc_id,
+              replica_private_data_subnet_ids: $replica_private_data_subnet_ids,
+              replica_kms_key_arn: $replica_kms_key_arn,
+
+              ses_from_address: $ses_from_address
+            }' > prod.ci.auto.tfvars.json
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
@@ -84,7 +156,7 @@ jobs:
       - name: Terraform plan
         id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -no-color -out=tfplan -input=false
+        run: terraform plan -no-color -out=tfplan -input=false -lock-timeout=5m
 
       - name: Generate plan JSON
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -179,6 +251,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -194,6 +267,77 @@ jobs:
         with:
           terraform_version: 1.7.5
 
+      - name: Generate prod CI tfvars
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          DOMAIN_NAME: ${{ vars.PROD_DOMAIN_NAME || 'www.welovedassouki.store' }}
+          ORIGIN_DOMAIN_NAME: ${{ vars.PROD_ORIGIN_DOMAIN_NAME || 'k8s-shopcloud-public-placeholder.eu-central-1.elb.amazonaws.com' }}
+          COOKIE_DOMAIN: ${{ vars.PROD_COOKIE_DOMAIN || '.www.welovedassouki.store' }}
+          ADMIN_PRIVATE_DNS_RECORD_LABEL: ${{ vars.PROD_ADMIN_PRIVATE_DNS_RECORD_LABEL || 'priv-admin' }}
+          CLIENT_VPN_CLIENT_CIDR: ${{ vars.PROD_CLIENT_VPN_CLIENT_CIDR || '10.222.0.0/22' }}
+          CLIENT_VPN_SERVER_CERTIFICATE_ARN: ${{ secrets.PROD_CLIENT_VPN_SERVER_CERTIFICATE_ARN }}
+          CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN: ${{ secrets.PROD_CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN }}
+          KMS_KEY_ARN: ${{ secrets.PROD_KMS_KEY_ARN }}
+          REPLICA_VPC_ID: ${{ vars.PROD_REPLICA_VPC_ID }}
+          REPLICA_PRIVATE_DATA_SUBNET_IDS: ${{ vars.PROD_REPLICA_PRIVATE_DATA_SUBNET_IDS }}
+          REPLICA_KMS_KEY_ARN: ${{ vars.PROD_REPLICA_KMS_KEY_ARN }}
+          SES_FROM_ADDRESS: ${{ vars.PROD_SES_FROM_ADDRESS || 'noreply@welovedassouki.store' }}
+        run: |
+          test -n "$CLIENT_VPN_SERVER_CERTIFICATE_ARN"
+          test -n "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN"
+          test -n "$KMS_KEY_ARN"
+          test -n "$REPLICA_VPC_ID"
+          test -n "$REPLICA_PRIVATE_DATA_SUBNET_IDS"
+          test -n "$REPLICA_KMS_KEY_ARN"
+
+          jq -n \
+            --arg domain_name "$DOMAIN_NAME" \
+            --arg origin_domain_name "$ORIGIN_DOMAIN_NAME" \
+            --arg cookie_domain "$COOKIE_DOMAIN" \
+            --arg admin_private_dns_record_label "$ADMIN_PRIVATE_DNS_RECORD_LABEL" \
+            --arg client_vpn_client_cidr "$CLIENT_VPN_CLIENT_CIDR" \
+            --arg client_vpn_server_certificate_arn "$CLIENT_VPN_SERVER_CERTIFICATE_ARN" \
+            --arg client_vpn_client_root_certificate_chain_arn "$CLIENT_VPN_CLIENT_ROOT_CERTIFICATE_CHAIN_ARN" \
+            --arg kms_key_arn "$KMS_KEY_ARN" \
+            --arg replica_vpc_id "$REPLICA_VPC_ID" \
+            --argjson replica_private_data_subnet_ids "$REPLICA_PRIVATE_DATA_SUBNET_IDS" \
+            --arg replica_kms_key_arn "$REPLICA_KMS_KEY_ARN" \
+            --arg ses_from_address "$SES_FROM_ADDRESS" \
+            '{
+              environment: "prod",
+              aws_region: "eu-central-1",
+
+              enable_edge: true,
+              enable_eks: true,
+              enable_helm_addons: true,
+              enable_cognito: true,
+              enable_data: true,
+              enable_private_admin_access: true,
+              enable_client_vpn: true,
+
+              domain_name: $domain_name,
+              origin_domain_name: $origin_domain_name,
+              cookie_domain: $cookie_domain,
+
+              customer_callback_url: ("https://" + $domain_name + "/auth/callback"),
+              customer_logout_url: ("https://" + $domain_name + "/"),
+
+              admin_private_dns_record_label: $admin_private_dns_record_label,
+              admin_callback_url: ("https://" + $admin_private_dns_record_label + "." + $domain_name + "/auth/admin/callback"),
+              admin_logout_url: ("https://" + $admin_private_dns_record_label + "." + $domain_name + "/"),
+
+              client_vpn_client_cidr: $client_vpn_client_cidr,
+              client_vpn_server_certificate_arn: $client_vpn_server_certificate_arn,
+              client_vpn_client_root_certificate_chain_arn: $client_vpn_client_root_certificate_chain_arn,
+
+              kms_key_arn: $kms_key_arn,
+              replica_vpc_id: $replica_vpc_id,
+              replica_private_data_subnet_ids: $replica_private_data_subnet_ids,
+              replica_kms_key_arn: $replica_kms_key_arn,
+
+              ses_from_address: $ses_from_address
+            }' > prod.ci.auto.tfvars.json
+
       - name: Terraform fmt
         run: terraform fmt -check -recursive
 
@@ -207,7 +351,7 @@ jobs:
 
       - name: Terraform plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -no-color -out=tfplan -input=false
+        run: terraform plan -no-color -out=tfplan -input=false -lock-timeout=5m
 
       - name: Generate plan JSON
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -226,8 +370,11 @@ jobs:
             --policy ${{ github.workspace }}/policy/terraform \
             --all-namespaces
 
+      - name: Show apply warning
+        run: |
+          echo "This job is about to apply Terraform changes to PROD."
+          echo "Only continue if the prod environment approval was intentional."
+
       - name: Terraform apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -auto-approve -input=false tfplan
-
-

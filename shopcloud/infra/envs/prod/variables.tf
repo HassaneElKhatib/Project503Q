@@ -78,7 +78,7 @@ variable "enable_edge" {
 variable "enable_client_vpn" {
   description = "Enable AWS Client VPN endpoint."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "client_vpn_server_certificate_arn" {
@@ -144,7 +144,7 @@ variable "admin_private_dns_record_label" {
 
 variable "domain_name" {
   type    = string
-  default = "shopcloud.example.com"
+  default = "www.welovedassouki.store"
 }
 
 variable "origin_domain_name" {
@@ -206,7 +206,7 @@ variable "enable_cognito" {
 
 variable "cookie_domain" {
   type    = string
-  default = ".shopcloud.example.com"
+  default = ".www.welovedassouki.store"
 }
 
 variable "customer_domain_prefix" {
@@ -221,22 +221,22 @@ variable "admin_domain_prefix" {
 
 variable "customer_callback_url" {
   type    = string
-  default = "https://shopcloud.example.com/auth/callback"
+  default = "https://www.welovedassouki.store/auth/callback"
 }
 
 variable "customer_logout_url" {
   type    = string
-  default = "https://shopcloud.example.com/"
+  default = "https://www.welovedassouki.store/"
 }
 
 variable "admin_callback_url" {
   type    = string
-  default = "https://admin.internal.shopcloud.example.com/auth/callback"
+  default = "https://priv-admin.www.welovedassouki.store/auth/admin/callback"
 }
 
 variable "admin_logout_url" {
   type    = string
-  default = "https://admin.internal.shopcloud.example.com/"
+  default = "https://priv-admin.www.welovedassouki.store/"
 }
 
 ############################################
@@ -270,7 +270,7 @@ variable "rds_replica_instance_class" {
 
 variable "ses_from_address" {
   type    = string
-  default = "noreply@shopcloud.example.com"
+  default = "noreply@welovedassouki.store"
 }
 
 variable "lambda_zip_path" {

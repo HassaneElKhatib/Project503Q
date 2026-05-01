@@ -4,6 +4,8 @@ metadata:
   name: block-admin
   namespace: app
 spec:
+  selector:
+    shopcloud.io/no-endpoints: block-admin
   ports:
     - name: http
       port: 80

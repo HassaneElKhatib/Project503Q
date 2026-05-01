@@ -52,6 +52,15 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
     enabled = false
   }
 
+  lifecycle {
+    precondition {
+      condition = !var.enable_federated_authentication || var.saml_provider_arn != null || (
+        try(length(trimspace(coalesce(var.saml_metadata_document, ""))), 0) > 0
+      )
+      error_message = "When enable_federated_authentication is true, set either saml_provider_arn or a non-empty saml_metadata_document (IdP metadata XML)."
+    }
+  }
+
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-client-vpn"
   })

@@ -3,6 +3,25 @@ resource "aws_vpc" "this" {
   enable_dns_support   = true
   enable_dns_hostnames = true
 
+  lifecycle {
+    precondition {
+      condition     = length(var.public_subnet_cidrs) == length(var.azs)
+      error_message = "public_subnet_cidrs must provide one CIDR per AZ."
+    }
+    precondition {
+      condition     = length(var.private_app_subnet_cidrs) == length(var.azs)
+      error_message = "private_app_subnet_cidrs must provide one CIDR per AZ."
+    }
+    precondition {
+      condition     = length(var.private_data_subnet_cidrs) == length(var.azs)
+      error_message = "private_data_subnet_cidrs must provide one CIDR per AZ."
+    }
+    precondition {
+      condition     = var.nat_gateway_count >= 1 && var.nat_gateway_count <= length(var.azs)
+      error_message = "nat_gateway_count must be between 1 and the AZ count."
+    }
+  }
+
   tags = {
     Name = "${var.name_prefix}-vpc"
   }

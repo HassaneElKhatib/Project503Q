@@ -45,13 +45,6 @@ variable "enable_federated_authentication" {
   description = "Add SAML federated authentication (use IdP MFA). Requires saml_provider_arn or saml_metadata_document."
   type        = bool
   default     = false
-
-  validation {
-    condition = !var.enable_federated_authentication || var.saml_provider_arn != null || (
-      try(length(trimspace(coalesce(var.saml_metadata_document, ""))), 0) > 0
-    )
-    error_message = "When enable_federated_authentication is true, set either saml_provider_arn or a non-empty saml_metadata_document (IdP metadata XML)."
-  }
 }
 
 variable "saml_metadata_document" {

@@ -9,6 +9,7 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/subnets: subnet-0e3a399645d66db95,subnet-0a9ee9478adf9adfe
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # Must match Terraform output admin_private_certificate_arn.
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:712044128773:certificate/5a71e921-9925-486c-9114-cb4c4fc1f6e9
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/healthcheck-path: /healthz
