@@ -49,6 +49,25 @@ jobs:
       - name: Terraform fmt
         run: terraform fmt -check -recursive
 
+      - name: Add dummy AWS providers for module validation
+        run: |
+          cat > zz_ci_providers.tf <<'EOF'
+          provider "aws" {
+            region                      = "us-east-1"
+            skip_credentials_validation = true
+            skip_requesting_account_id  = true
+            skip_metadata_api_check     = true
+          }
+
+          provider "aws" {
+            alias                       = "replica"
+            region                      = "eu-west-1"
+            skip_credentials_validation = true
+            skip_requesting_account_id  = true
+            skip_metadata_api_check     = true
+          }
+          EOF
+
       - name: Terraform init
         run: terraform init -backend=false
 
