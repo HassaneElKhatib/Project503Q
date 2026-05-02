@@ -5,5 +5,4 @@ metadata:
 data:
   environment: dev
   aws_region: eu-central-1
-  # Match Terraform dev example until real DNS exists; override after Route53/ACM.
-  public_origin: https://dev.shopcloud.example.com
+  public_origin: https://dev.welovedassouki.store

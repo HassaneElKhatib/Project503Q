@@ -1,4 +1,3 @@
-# Internal ALB (VPN-only path per architecture). Set inbound-cidrs to VPN/client subnets when known.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,26 +6,37 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internal
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-    alb.ingress.kubernetes.io/healthcheck-path: /health/live
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-central-1:712044128773:certificate/612ef8bf-6eb6-4019-b2f8-bc1bae48d0b4
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/group.name: shopcloud-admin-dev
-    alb.ingress.kubernetes.io/inbound-cidrs: 10.20.0.0/16
+    alb.ingress.kubernetes.io/inbound-cidrs: 10.20.0.0/16,10.30.0.0/16,10.222.0.0/22
+    alb.ingress.kubernetes.io/subnets: subnet-0e8e6fe86f10d06f2,subnet-0b8acfa98bc6a36e9
 spec:
+  ingressClassName: alb
   rules:
-    - host: admin.dev.internal.shopcloud.example.com
+    - host: priv-admin.dev.welovedassouki.store
       http:
         paths:
-          - path: /api/admin
-            pathType: Prefix
-            backend:
-              service:
-                name: admin
-                port:
-                  number: 80
-          - path: /api/me
+          - path: /auth/admin
             pathType: Prefix
             backend:
               service:
                 name: auth
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-web
                 port:
                   number: 80

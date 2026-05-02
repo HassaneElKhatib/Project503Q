@@ -168,19 +168,15 @@ export default function LoginPage() {
                 </button>
               </>
             )}
-            <button
-              disabled={isGoogleLoading || !isGoogleLoginEnabled}
-              className="w-full h-11 bg-accent-hover rounded-xl text-base text-white hover:bg-accent cursor-pointer transition-all duration-300"
-              onClick={() => {
-                if (!isGoogleLoginEnabled) {
-                  toast.error("Google login is disabled in local mode.");
-                  return;
-                }
-                googleLogin();
-              }}
-            >
-              {isGoogleLoading ? "Loading..." : (isGoogleLoginEnabled ? "Google Login" : "Google Login (disabled)")}
-            </button>
+            {isGoogleLoginEnabled && (
+              <button
+                disabled={isGoogleLoading}
+                className="w-full h-11 bg-accent-hover rounded-xl text-base text-white hover:bg-accent cursor-pointer transition-all duration-300"
+                onClick={() => googleLogin()}
+              >
+                {isGoogleLoading ? "Loading..." : "Google Login"}
+              </button>
+            )}
 
             <p className="text-slate-700 text-sm text-center">
               Don't have an account?{" "}

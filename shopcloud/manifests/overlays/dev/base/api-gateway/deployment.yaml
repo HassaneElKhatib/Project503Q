@@ -41,7 +41,7 @@ spec:
               app: api-gateway
       containers:
         - name: api-gateway
-          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-api-gateway:latest
+          image: 712044128773.dkr.ecr.eu-central-1.amazonaws.com/shopcloud-prod-api-gateway:v20260502b
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -76,14 +76,55 @@ spec:
             - name: AUTH_BASE_URL
               value: http://auth
             - name: GATEWAY_DB_URL
-              value: "sqlite+aiosqlite:////data/gateway.db"
+              valueFrom:
+                secretKeyRef:
+                  name: shared-database
+                  key: writer_url
             - name: USE_LOCAL_GATEWAY_AUTH
-              value: "true"
+              value: "false"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: api-gateway-jwt
                   key: secret
+            - name: COGNITO_USER_POOL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: user_pool_id
+            - name: COGNITO_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: app_client_id
+            - name: COGNITO_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-customer
+                  key: region
+            - name: COGNITO_ADMIN_USER_POOL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: user_pool_id
+            - name: COGNITO_ADMIN_APP_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: app_client_id
+            - name: COGNITO_ADMIN_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: cognito-admin
+                  key: region
+            - name: S3_IMAGES_BUCKET
+              value: "shopcloud-dev-images-712044128773"
+            - name: S3_IMAGES_REGION
+              value: "eu-central-1"
+            - name: SMTP_FROM_EMAIL
+              value: "noreply@welovedassouki.store"
+            - name: SMTP_FROM_NAME
+              value: "The Glow Lab"
           resources:
             requests:
               cpu: 100m

@@ -34,6 +34,8 @@ Thumbs.db
 **/backend.hcl
 **/*.auto.tfvars
 *.tfplan
+*.tfplan-vpn
+*.tfplan-vpn-rotate
 
 # Secrets
 .env

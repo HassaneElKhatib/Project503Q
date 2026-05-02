@@ -202,7 +202,7 @@ async def login(payload: LoginIn, session: Annotated[AsyncSession, Depends(_sess
         "mfaToken": mfa_token,
         "email": user.email,
         "emailSent": email_sent,
-        "debugOtp": None if email_sent else otp_code,
+        "debugOtp": otp_code if settings.use_local_gateway_auth else (None if email_sent else otp_code),
     }
 
 
